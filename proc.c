@@ -1,6 +1,7 @@
 #include "proc.h"
 #include "queue.h"
 
+extern FILE* logfp;
 bool in_white(char *abs_name)
 {
     char white_file[20] = "white";
@@ -105,7 +106,7 @@ bool can_fuzz_file(Process* pro)
             strcat(pro->fuzz_cmd, argp->real);
         }
     }
-    printf("%s %s\n", __func__, pro->fuzz_cmd);
+    fprintf(logfp, "File fuzz %d, cmd is %s\n", pro->pid, pro->fuzz_cmd);
     return find;
 }
 
@@ -129,6 +130,7 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
         QSIMPLEQ_FOREACH(tcp, tcplist, next)
             if (tcp->inode == socknum) {
                 proc->port = tcp->rport;
+                fprintf(logfp, "Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
                 return true;
             }
     }
@@ -138,8 +140,9 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
 // 0: CANNOT; 1: FILE; 2: PROTOCOL
 int can_fuzz(Process* pro, TcpList* tcplist)
 {
-    if (in_white(pro->abs_name))
+    if (in_white(pro->abs_name)) {
         return 0;
+    }
     if (!is_elf(pro->elf_name))
         return 0;
     if (root_own(pro->pid))
