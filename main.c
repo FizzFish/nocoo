@@ -3,6 +3,7 @@
 int main(int argc, char ** argv)
 {
     int pid = atoi(argv[1]);
+    /**
     char elf[50], real[50];
     char *abs;
     sprintf(elf, "/proc/%d/exe", pid);
@@ -12,5 +13,8 @@ int main(int argc, char ** argv)
     in_white(abs);
     is_elf(real);
     root_own(pid);
+    */
+
+    Process *pro = get_process(pid);
     return 0;
 }

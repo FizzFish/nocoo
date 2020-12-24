@@ -1,4 +1,5 @@
 #include "proc.h"
+#include "queue.h"
 
 bool in_white(char *abs_name)
 {
@@ -71,13 +72,109 @@ bool root_own(int pid)
     return false;
 }
 
-bool has_file_in_arg(int pid)
+bool is_file(Argument* arg, char* cwd)
+{
+    if (!access(arg->origin, 0)) {
+        strcpy(arg->real, arg->origin);
+        return true;
+    }
+    char path[50];
+    sprintf(path, "%s/%s", cwd, arg->origin);
+    if (!access(path, 0)) {
+        strcpy(arg->real, path);
+        return true;
+    }
+    strcpy(arg->real, path);
+    return false;
+}
+
+bool can_fuzz_file(Process* pro)
+{
+    Argument *argp;
+    bool ret = false;
+    bool first = true;
+    QLIST_FOREACH(argp, &pro->arglist, node)
+    {
+        if(first && is_file(argp, pro->cwd))
+        {
+            ret = true;
+            strcat(pro->fuzz_cmd, "@@ ");
+            pro->fuzz_arg = argp;
+        } else {
+            strcat(pro->fuzz_cmd, argp->real);
+            strcat(pro->fuzz_cmd, " ");
+        }
+    }
+    return true;
+}
+
+bool can_fuzz_protocol(Process* pro)
 {
     return true;
 }
 
-bool is_listen(int pid)
+// 0: CANNOT; 1: FILE; 2: PROTOCOL
+int can_fuzz(Process* pro)
 {
-    return true;
+    if (in_white(pro->elf_name))
+        return 0;
+    if (!is_elf(pro->real_name))
+        return 0;
+    if (root_own(pro->pid))
+        return 0;
+    if (can_fuzz_file(pro))
+        return 1;
+    if (can_fuzz_protocol(pro))
+        return 2;
 }
+
+Process* get_process(int pid)
+{
+    Process *proc = malloc(sizeof(Process));
+    QLIST_INIT(&proc->arglist);
+    char file_name[50];
+    FILE *fp;
+    // analysis /proc/pid/exe
+    sprintf(proc->elf_name, "/proc/%d/exe", pid);
+    if(readlink(proc->elf_name, proc->real_name, 50) < 0)
+        perror("readlink exe");
+    proc->abs_name = strrchr(proc->real_name, '/') + 1;
+    printf("%s %s %s\n", proc->elf_name, proc->real_name, proc->abs_name);
+
+    // analysis /proc/pid/cwd
+    sprintf(proc->cwd, "/proc/%d/cwd", pid);
+    if(readlink(proc->cwd, proc->cwd, 50) < 0)
+        perror("readlink cwd");
+    printf("cwd is %s\n", proc->cwd);
+
+    // analysis /proc/pid/cmdline
+    sprintf(file_name, "/proc/%d/cmdline", pid);
+    fp = fopen(file_name, "r");
+    if (!fp)
+        perror("fread");
+    size_t size = 0;
+    char *line = NULL;
+    int c;
+    char arg[20], *p = arg;
+    while((c = fgetc(fp)) != EOF)
+    {
+        *p++ = c;
+        if (!c) {
+            Argument *argument = malloc(sizeof(Argument));
+            memcpy(argument->origin, arg, strlen(arg));
+            QLIST_INSERT_HEAD(&proc->arglist, argument, node);
+            memset(arg, 0 , 20);
+            p = arg;
+        }
+    }
+    fclose(fp);
+    Argument *argp;
+    QLIST_FOREACH(argp, &proc->arglist, node)
+    {
+        printf("arg is %s\n", argp->origin);
+
+    }
+    return proc;
+}
+
 
