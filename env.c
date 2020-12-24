@@ -49,7 +49,6 @@ void prepare_env(Fuzz* fuzz)
 
 }
 
-FILE *logfile;
 void print_tcp_packet(unsigned char* Buffer, int Size);
 void sniffer(int port)
 {
@@ -60,10 +59,7 @@ void sniffer(int port)
     struct sockaddr_in source,dest;
 	sock_raw = socket(AF_INET , SOCK_RAW , IPPROTO_TCP);
 	unsigned char *buffer = (unsigned char *)malloc(65536); //Its Big!
-	//logfile=fopen("log.txt","w");
-    logfile = stdout;
 
-	if(logfile==NULL) printf("Unable to create file.");
 	if(sock_raw < 0)
 	{
 		printf("Socket Error\n");
@@ -92,32 +88,32 @@ void PrintData (unsigned char* data , int Size)
 	{
 		if( i!=0 && i%16==0)   //if one line of hex printing is complete...
 		{
-			fprintf(logfile,"         ");
+			fprintf(logfp,"         ");
 			for(j=i-16 ; j<i ; j++)
 			{
 				if(data[j]>=32 && data[j]<=128)
-					fprintf(logfile,"%c",(unsigned char)data[j]); //if its a number or alphabet
+					fprintf(logfp,"%c",(unsigned char)data[j]); //if its a number or alphabet
 				
-				else fprintf(logfile,"."); //otherwise print a dot
+				else fprintf(logfp,"."); //otherwise print a dot
 			}
-			fprintf(logfile,"\n");
+			fprintf(logfp,"\n");
 		} 
 		
-		if(i%16==0) fprintf(logfile,"   ");
-			fprintf(logfile," %02X",(unsigned int)data[i]);
+		if(i%16==0) fprintf(logfp,"   ");
+			fprintf(logfp," %02X",(unsigned int)data[i]);
 				
 		if( i==Size-1)  //print the last spaces
 		{
-			for(j=0;j<15-i%16;j++) fprintf(logfile,"   "); //extra spaces
+			for(j=0;j<15-i%16;j++) fprintf(logfp,"   "); //extra spaces
 			
-			fprintf(logfile,"         ");
+			fprintf(logfp,"         ");
 			
 			for(j=i-i%16 ; j<=i ; j++)
 			{
-				if(data[j]>=32 && data[j]<=128) fprintf(logfile,"%c",(unsigned char)data[j]);
-				else fprintf(logfile,".");
+				if(data[j]>=32 && data[j]<=128) fprintf(logfp,"%c",(unsigned char)data[j]);
+				else fprintf(logfp,".");
 			}
-			fprintf(logfile,"\n");
+			fprintf(logfp,"\n");
 		}
 	}
 }
@@ -131,40 +127,40 @@ void print_tcp_packet(unsigned char* Buffer, int Size)
 	
 	struct tcphdr *tcph=(struct tcphdr*)(Buffer + iphdrlen);
 			
-	fprintf(logfile,"\n\n***********************TCP Packet*************************\n");	
+	fprintf(logfp,"\n\n***********************TCP Packet*************************\n");	
 		
 	//print_ip_header(Buffer,Size);
 		
-	fprintf(logfile,"\n");
-	fprintf(logfile,"TCP Header\n");
-	fprintf(logfile,"   |-Source Port      : %u\n",ntohs(tcph->source));
-	fprintf(logfile,"   |-Destination Port : %u\n",ntohs(tcph->dest));
-	fprintf(logfile,"   |-Sequence Number    : %u\n",ntohl(tcph->seq));
-	fprintf(logfile,"   |-Acknowledge Number : %u\n",ntohl(tcph->ack_seq));
-	fprintf(logfile,"   |-Header Length      : %d DWORDS or %d BYTES\n" ,(unsigned int)tcph->doff,(unsigned int)tcph->doff*4);
-	//fprintf(logfile,"   |-CWR Flag : %d\n",(unsigned int)tcph->cwr);
-	//fprintf(logfile,"   |-ECN Flag : %d\n",(unsigned int)tcph->ece);
-	fprintf(logfile,"   |-Urgent Flag          : %d\n",(unsigned int)tcph->urg);
-	fprintf(logfile,"   |-Acknowledgement Flag : %d\n",(unsigned int)tcph->ack);
-	fprintf(logfile,"   |-Push Flag            : %d\n",(unsigned int)tcph->psh);
-	fprintf(logfile,"   |-Reset Flag           : %d\n",(unsigned int)tcph->rst);
-	fprintf(logfile,"   |-Synchronise Flag     : %d\n",(unsigned int)tcph->syn);
-	fprintf(logfile,"   |-Finish Flag          : %d\n",(unsigned int)tcph->fin);
-	fprintf(logfile,"   |-Window         : %d\n",ntohs(tcph->window));
-	fprintf(logfile,"   |-Checksum       : %d\n",ntohs(tcph->check));
-	fprintf(logfile,"   |-Urgent Pointer : %d\n",tcph->urg_ptr);
-	fprintf(logfile,"\n");
-	fprintf(logfile,"                        DATA Dump                         ");
-	fprintf(logfile,"\n");
+	fprintf(logfp,"\n");
+	fprintf(logfp,"TCP Header\n");
+	fprintf(logfp,"   |-Source Port      : %u\n",ntohs(tcph->source));
+	fprintf(logfp,"   |-Destination Port : %u\n",ntohs(tcph->dest));
+	fprintf(logfp,"   |-Sequence Number    : %u\n",ntohl(tcph->seq));
+	fprintf(logfp,"   |-Acknowledge Number : %u\n",ntohl(tcph->ack_seq));
+	fprintf(logfp,"   |-Header Length      : %d DWORDS or %d BYTES\n" ,(unsigned int)tcph->doff,(unsigned int)tcph->doff*4);
+	//fprintf(logfp,"   |-CWR Flag : %d\n",(unsigned int)tcph->cwr);
+	//fprintf(logfp,"   |-ECN Flag : %d\n",(unsigned int)tcph->ece);
+	fprintf(logfp,"   |-Urgent Flag          : %d\n",(unsigned int)tcph->urg);
+	fprintf(logfp,"   |-Acknowledgement Flag : %d\n",(unsigned int)tcph->ack);
+	fprintf(logfp,"   |-Push Flag            : %d\n",(unsigned int)tcph->psh);
+	fprintf(logfp,"   |-Reset Flag           : %d\n",(unsigned int)tcph->rst);
+	fprintf(logfp,"   |-Synchronise Flag     : %d\n",(unsigned int)tcph->syn);
+	fprintf(logfp,"   |-Finish Flag          : %d\n",(unsigned int)tcph->fin);
+	fprintf(logfp,"   |-Window         : %d\n",ntohs(tcph->window));
+	fprintf(logfp,"   |-Checksum       : %d\n",ntohs(tcph->check));
+	fprintf(logfp,"   |-Urgent Pointer : %d\n",tcph->urg_ptr);
+	fprintf(logfp,"\n");
+	fprintf(logfp,"                        DATA Dump                         ");
+	fprintf(logfp,"\n");
 		
-	fprintf(logfile,"IP Header\n");
+	fprintf(logfp,"IP Header\n");
 	PrintData(Buffer,iphdrlen);
 		
-	fprintf(logfile,"TCP Header\n");
+	fprintf(logfp,"TCP Header\n");
 	PrintData(Buffer+iphdrlen,tcph->doff*4);
 		
-	fprintf(logfile,"Data Payload\n");	
+	fprintf(logfp,"Data Payload\n");	
 	PrintData(Buffer + iphdrlen + tcph->doff*4 , (Size - tcph->doff*4-iph->ihl*4) );
 						
-	fprintf(logfile,"\n###########################################################");
+	fprintf(logfp,"\n###########################################################");
 }

@@ -22,6 +22,8 @@ void fuzz(Process * proc)
     fuzz.proc = proc;
     
     prepare_env(&fuzz);
+
+    fclose(logfp);
     int pid = fork();
     int status;
     if (pid < 0)
@@ -42,7 +44,6 @@ int getval(char* line, regmatch_t *pmatch, int index, int base)
     char *end;
     memcpy(match, line + pmatch[index].rm_so, len);
     match[len] = 0;
-    puts(match);
     return (int)strtol(match, &end, base);
 }
 void procNet() {

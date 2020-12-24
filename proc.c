@@ -106,7 +106,8 @@ bool can_fuzz_file(Process* pro)
             strcat(pro->fuzz_cmd, argp->real);
         }
     }
-    fprintf(logfp, "File fuzz %d, cmd is %s\n", pro->pid, pro->fuzz_cmd);
+    if (find)
+        fprintf(logfp, "File fuzz %d, cmd is %s\n", pro->pid, pro->fuzz_cmd);
     return find;
 }
 
