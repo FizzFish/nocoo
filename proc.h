@@ -6,7 +6,10 @@
 #include <string.h>
 #include<sys/types.h>
 #include<sys/stat.h>
+#include<sys/time.h>
 #include<fcntl.h>
+#include <signal.h>
+#include <dirent.h>
 #include <unistd.h>
 #include "queue.h"
 
@@ -18,8 +21,8 @@ typedef struct Argument Argument;
 
 struct Argument
 {
-    char origin[50];
-    char real[50];
+    char *origin;
+    char *real;
     QSIMPLEQ_ENTRY(Argument) node;
 };
 
@@ -27,12 +30,13 @@ struct Argument
 typedef struct Process
 {
     int pid;
-    char elf_name[50];
+    char elf_name[100];
     char *abs_name;
-    char cwd[50];
+    char cwd[200];
     bool fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
-    char fuzz_cmd[100];
+    int socknum;
+    char fuzz_cmd[1024];
     QSIMPLEQ_HEAD(, Argument) arglist;
 } Process;
 

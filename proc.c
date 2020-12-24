@@ -10,7 +10,7 @@ bool in_white(char *abs_name)
     while(getline(&line, &size, fp) != -1)
     {
         if (strncmp(abs_name, line, strlen(abs_name)) == 0) {
-            printf("in white list\n");
+            //printf("in white list\n");
             fclose(fp);
             return true;
         }
@@ -23,7 +23,7 @@ bool is_elf(char * elf_name)
 {
     FILE *fp = fopen(elf_name, "r");
     if (fp == NULL)
-        perror("open failed");
+        return false;
     char magic[5];
     fread(magic, 1, 4, fp);
     fclose(fp);
@@ -47,6 +47,7 @@ bool root_own(int pid)
     if (!fp) {
         printf("%s\n", status_file);
         perror("open status failed");
+        return true;
     }
     while(getline(&line, &size, fp) != -1)
     {
@@ -58,6 +59,7 @@ bool root_own(int pid)
             if (status == REG_NOMATCH) {
                 printf("line is %s\n", line);
                 perror("No match");
+                return true;
             } else {
                 int len = pmatch[1].rm_eo - pmatch[1].rm_so;
                 memcpy(match, line + pmatch[1].rm_so, len);
@@ -110,16 +112,30 @@ bool can_fuzz_file(Process* pro)
 
 bool can_fuzz_protocol(Process* proc)
 {
-    if (can_fuzz_file(proc)) {
-        printf("fuzz_cmd is %s\n", proc->fuzz_cmd);
+    char fd[50], file[300], real[50];
+    struct dirent * pdir;
+    int socknum = 0;
+    sprintf(fd, "/proc/%d/fd", proc->pid);
+    DIR * fd_dir = opendir(fd);
+    while((pdir = readdir(fd_dir)) != 0) {
+        sprintf(file, "%s/%s", fd, pdir->d_name);
+        if (readlink(file, real, 50) < 0)
+            continue;
+        if (strstr(real, "socket"))
+            socknum = atoi(real+8);
     }
-    return true;
+    if (socknum) {
+        proc->socknum = socknum;
+
+        return true;
+    }
+    return false;
 }
 
 // 0: CANNOT; 1: FILE; 2: PROTOCOL
 int can_fuzz(Process* pro)
 {
-    if (in_white(pro->elf_name))
+    if (in_white(pro->abs_name))
         return 0;
     if (!is_elf(pro->elf_name))
         return 0;
@@ -127,7 +143,7 @@ int can_fuzz(Process* pro)
         return 0;
     if (can_fuzz_file(pro))
         return 1;
-    if (can_fuzz_protocol(pro))
+    else if (can_fuzz_protocol(pro))
         return 2;
 }
 
@@ -141,15 +157,15 @@ Process* get_process(int pid)
     // analysis /proc/pid/exe
     sprintf(file_name, "/proc/%d/exe", pid);
     if(readlink(file_name, proc->elf_name, 50) < 0)
-        perror("readlink exe");
+        return NULL;
     proc->abs_name = strrchr(proc->elf_name, '/') + 1;
-    printf("%s %s %s\n", proc->elf_name, proc->elf_name, proc->abs_name);
+    //printf("%s %s %s\n", proc->elf_name, proc->elf_name, proc->abs_name);
 
     // analysis /proc/pid/cwd
     sprintf(file_name, "/proc/%d/cwd", pid);
     if(readlink(file_name, proc->cwd, 50) < 0)
-        perror("readlink cwd");
-    printf("cwd is %s\n", proc->cwd);
+        return NULL;
+    //printf("cwd is %s\n", proc->cwd);
 
     // analysis /proc/pid/cmdline
     sprintf(file_name, "/proc/%d/cmdline", pid);
@@ -159,8 +175,9 @@ Process* get_process(int pid)
     size_t size = 0;
     char *line = NULL;
     int c;
-    char arg[20], *p = arg;
+    char arg[10240], *p = arg;
     bool first = true;
+    printf("ready read %d\n", pid);
     while((c = fgetc(fp)) != EOF)
     {
         *p++ = c;
@@ -170,15 +187,17 @@ Process* get_process(int pid)
                 memcpy(proc->fuzz_cmd, proc->elf_name, strlen(proc->elf_name));
             } else {
                 Argument *argument = malloc(sizeof(Argument));
+                argument->origin = malloc(strlen(arg));
+                argument->real = malloc(strlen(proc->cwd) + strlen(arg));
                 memcpy(argument->origin, arg, strlen(arg));
                 QSIMPLEQ_INSERT_TAIL(&proc->arglist, argument, node);
             }
-            memset(arg, 0 , 20);
+            memset(arg, 0 , 1024);
             p = arg;
         }
     }
     fclose(fp);
-#if 0
+#if 1
     Argument *argp;// *second = QSIMPLEQ_NEXT(QSIMPLEQ_HEAD(&proc->arglist));
     QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
     {

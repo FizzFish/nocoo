@@ -16,7 +16,9 @@ int main(int argc, char ** argv)
     */
 
     Process *proc = get_process(pid);
-    can_fuzz(proc);
-    printf("%s\n", proc->fuzz_cmd);
+    if (proc) {
+        printf("fuzz kind %d\n", can_fuzz(proc));
+        printf("%s\n", proc->fuzz_cmd);
+    }
     return 0;
 }
