@@ -81,33 +81,35 @@ bool is_file(Argument* arg, char* cwd)
         strcpy(arg->real, arg->origin);
         return true;
     }
-    char path[50];
-    if (!access(path, 0)) {
-        strcpy(arg->real, path);
+    sprintf(arg->real, "%s/%s", cwd, arg->origin);
+    if (!access(arg->real, 0)) {
         return true;
     }
     strcpy(arg->real, arg->origin);
     return false;
 }
 
-bool can_fuzz_file(Process* pro)
+bool can_fuzz_file(Process* proc)
 {
     Argument *argp;
     bool find = false;
     bool first = true;
-    QSIMPLEQ_FOREACH(argp, &pro->arglist, node)
+    QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
     {
-        if(!find && is_file(argp, pro->cwd)) {
+        if(!find && is_file(argp, proc->cwd)) {
             find = true;
-            strcat(pro->fuzz_cmd, " @@");
-            pro->fuzz_arg = argp;
+            strcat(proc->fuzz_cmd, " @@");
+            proc->fuzz_arg = argp;
         } else {
-            strcat(pro->fuzz_cmd, " ");
-            strcat(pro->fuzz_cmd, argp->real);
+            strcat(proc->fuzz_cmd, " ");
+            strcat(proc->fuzz_cmd, argp->real);
         }
     }
-    if (find)
-        fprintf(logfp, "File fuzz %d, cmd is %s\n", pro->pid, pro->fuzz_cmd);
+    if (find) {
+        proc->fuzz_kind = 1;
+        //fprintf(logfp, "File fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
+        printf("File fuzz %d, cmd is %s, fuzz arg is %s\n", proc->pid, proc->fuzz_cmd, proc->fuzz_arg->origin);
+    }
     return find;
 }
 
@@ -118,6 +120,10 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
     int socknum = 0;
     sprintf(fd, "/proc/%d/fd", proc->pid);
     DIR * fd_dir = opendir(fd);
+    if (fd_dir < 0) {
+        perror("opendir");
+        printf("open dir %s error\n", fd);
+    }
     while((pdir = readdir(fd_dir)) != 0) {
         sprintf(file, "%s/%s", fd, pdir->d_name);
         if (readlink(file, real, 50) < 0)
@@ -126,12 +132,13 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
             socknum = atoi(real+8);
     }
     if (socknum) {
-        proc->socknum = socknum;
         tcpEntry *tcp;
         QSIMPLEQ_FOREACH(tcp, tcplist, next)
             if (tcp->inode == socknum) {
                 proc->port = tcp->rport;
+                proc->fuzz_kind = 2;
                 fprintf(logfp, "Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
+                printf("Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
                 return true;
             }
     }
@@ -193,9 +200,9 @@ Process* get_process(int pid)
                 memcpy(proc->fuzz_cmd, proc->elf_name, strlen(proc->elf_name));
             } else {
                 Argument *argument = malloc(sizeof(Argument));
-                argument->origin = malloc(strlen(arg));
-                argument->real = malloc(strlen(proc->cwd) + strlen(arg));
-                memcpy(argument->origin, arg, strlen(arg));
+                argument->origin = malloc(strlen(arg)+1);
+                argument->real = malloc(strlen(proc->cwd) + strlen(arg)+2);
+                strcpy(argument->origin, arg);
                 QSIMPLEQ_INSERT_TAIL(&proc->arglist, argument, node);
             }
             memset(arg, 0 , 1024);

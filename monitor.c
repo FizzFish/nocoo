@@ -6,7 +6,7 @@ TcpList tcplist;
 void search_process(void);
 
 extern void prepare_env(Fuzz*);
-extern void sniffer(int);
+extern void sniffer(int, int);
 
 static void handle_timeout(int sig) {
     search_process();
@@ -22,18 +22,25 @@ void fuzz(Process * proc)
     fuzz.proc = proc;
     
     prepare_env(&fuzz);
+    printf("%d: %s %s\n", proc->pid, fuzz.root, fuzz.in);
+    printf("%s\n", proc->fuzz_cmd);
+    printf("%d\n", proc->fuzz_kind);
 
-    fclose(logfp);
-    int pid = fork();
-    int status;
-    if (pid < 0)
-        perror("fork");
-    if (!pid) {
-        sniffer(10086);
+    if (proc->fuzz_kind == 2) {
+        char pcap[250];
+        sprintf(pcap, "%s/pcap", fuzz.in);
+        int infd = open(pcap, O_RDWR);
+        printf("fd of %s is %d\n", pcap, infd);
+        int pid = fork();
+        int status;
+        if (pid < 0)
+            perror("fork");
+        if (!pid) {
+            sniffer(proc->port, infd);
+        }
+        waitpid(pid, &status, 0);
     }
-    waitpid(pid, &status, 0);
-    //printf("%d: %s %s\n", proc->pid, fuzz.root, fuzz.in);
-    //printf("%s\n", proc->fuzz_cmd);
+
     free(fuzz.root);
     free(fuzz.in);
 }

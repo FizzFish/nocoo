@@ -88,3 +88,5 @@ thnuclnt
 sunloginclient
 update-manager
 python3
+ssh-agent
+vim.basic

@@ -33,9 +33,8 @@ typedef struct Process
     char elf_name[100];
     char *abs_name;
     char cwd[200];
-    bool fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
+    int fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
-    int socknum;
     int port;
     char fuzz_cmd[1024];
     QSIMPLEQ_HEAD(, Argument) arglist;

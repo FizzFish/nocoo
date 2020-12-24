@@ -1,24 +1,8 @@
 #include "proc.h"
-
+FILE *logfp;
+extern void sniffer(int);
 int main(int argc, char ** argv)
 {
-    int pid = atoi(argv[1]);
-    /**
-    char elf[50], real[50];
-    char *abs;
-    sprintf(elf, "/proc/%d/exe", pid);
-    if(readlink(elf, real, 50) < 0)
-        perror("readlink");
-    abs = strrchr(real, '/') + 1;
-    in_white(abs);
-    is_elf(real);
-    root_own(pid);
-    */
-
-    Process *proc = get_process(pid);
-    if (proc) {
-        printf("fuzz kind %d\n", can_fuzz(proc));
-        printf("%s\n", proc->fuzz_cmd);
-    }
+    sniffer(10086);
     return 0;
 }
