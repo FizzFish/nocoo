@@ -96,17 +96,16 @@ bool can_fuzz_file(Process* pro)
     bool first = true;
     QSIMPLEQ_FOREACH(argp, &pro->arglist, node)
     {
-        if(is_file(argp, pro->cwd)) {
-            if (!find) {
-                find = true;
-                strcat(pro->fuzz_cmd, " @@");
-                pro->fuzz_arg = argp;
-            } else {
-                strcat(pro->fuzz_cmd, " ");
-                strcat(pro->fuzz_cmd, argp->real);
-            }
+        if(!find && is_file(argp, pro->cwd)) {
+            find = true;
+            strcat(pro->fuzz_cmd, " @@");
+            pro->fuzz_arg = argp;
+        } else {
+            strcat(pro->fuzz_cmd, " ");
+            strcat(pro->fuzz_cmd, argp->real);
         }
     }
+    printf("%s %s\n", __func__, pro->fuzz_cmd);
     return find;
 }
 
@@ -177,7 +176,6 @@ Process* get_process(int pid)
     int c;
     char arg[10240], *p = arg;
     bool first = true;
-    printf("ready read %d\n", pid);
     while((c = fgetc(fp)) != EOF)
     {
         *p++ = c;
@@ -197,14 +195,6 @@ Process* get_process(int pid)
         }
     }
     fclose(fp);
-#if 1
-    Argument *argp;// *second = QSIMPLEQ_NEXT(QSIMPLEQ_HEAD(&proc->arglist));
-    QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
-    {
-        printf("debug: arg is %s\n", argp->origin);
-
-    }
-#endif
     return proc;
 }
 

@@ -50,3 +50,10 @@ Process* get_process(int);
 bool filter(Process*);
 int can_fuzz(Process*);
 
+typedef struct Fuzz
+{
+    char *in;
+    Process * proc;
+
+} Fuzz;
+
