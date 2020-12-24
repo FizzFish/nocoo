@@ -36,9 +36,20 @@ typedef struct Process
     bool fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
     int socknum;
+    int port;
     char fuzz_cmd[1024];
     QSIMPLEQ_HEAD(, Argument) arglist;
 } Process;
+
+typedef struct tcpEntry
+{
+    uint32_t raddr, rport;
+    uint32_t laddr, lport;
+    int state, inode;
+    QSIMPLEQ_ENTRY(tcpEntry) next;
+} tcpEntry;
+
+typedef QSIMPLEQ_HEAD(TcpList, tcpEntry) TcpList;
 
 bool in_white(char*);
 bool is_elf(char*);
@@ -48,12 +59,15 @@ bool is_listen(int);
 
 Process* get_process(int);
 bool filter(Process*);
-int can_fuzz(Process*);
+int can_fuzz(Process*, TcpList*);
 
 typedef struct Fuzz
 {
+    char *root;
     char *in;
     Process * proc;
 
 } Fuzz;
+
+
 

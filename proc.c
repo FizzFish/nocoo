@@ -109,7 +109,7 @@ bool can_fuzz_file(Process* pro)
     return find;
 }
 
-bool can_fuzz_protocol(Process* proc)
+bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
 {
     char fd[50], file[300], real[50];
     struct dirent * pdir;
@@ -125,14 +125,18 @@ bool can_fuzz_protocol(Process* proc)
     }
     if (socknum) {
         proc->socknum = socknum;
-
-        return true;
+        tcpEntry *tcp;
+        QSIMPLEQ_FOREACH(tcp, tcplist, next)
+            if (tcp->inode == socknum) {
+                proc->port = tcp->rport;
+                return true;
+            }
     }
     return false;
 }
 
 // 0: CANNOT; 1: FILE; 2: PROTOCOL
-int can_fuzz(Process* pro)
+int can_fuzz(Process* pro, TcpList* tcplist)
 {
     if (in_white(pro->abs_name))
         return 0;
@@ -142,7 +146,7 @@ int can_fuzz(Process* pro)
         return 0;
     if (can_fuzz_file(pro))
         return 1;
-    else if (can_fuzz_protocol(pro))
+    else if (can_fuzz_protocol(pro, tcplist))
         return 2;
 }
 
