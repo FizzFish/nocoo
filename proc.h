@@ -18,9 +18,9 @@ typedef struct Argument Argument;
 
 struct Argument
 {
-    char origin[20];
-    char real[20];
-    QLIST_ENTRY(Argument) node;
+    char origin[50];
+    char real[50];
+    QSIMPLEQ_ENTRY(Argument) node;
 };
 
 
@@ -28,13 +28,12 @@ typedef struct Process
 {
     int pid;
     char elf_name[50];
-    char real_name[50];
     char *abs_name;
     char cwd[50];
     bool fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
     char fuzz_cmd[100];
-    QLIST_HEAD(, Argument) arglist;
+    QSIMPLEQ_HEAD(, Argument) arglist;
 } Process;
 
 bool in_white(char*);

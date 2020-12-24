@@ -15,6 +15,8 @@ int main(int argc, char ** argv)
     root_own(pid);
     */
 
-    Process *pro = get_process(pid);
+    Process *proc = get_process(pid);
+    can_fuzz(proc);
+    printf("%s\n", proc->fuzz_cmd);
     return 0;
 }

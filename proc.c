@@ -44,8 +44,10 @@ bool root_own(int pid)
     char match[10];
     regmatch_t pmatch[2];
     const size_t nmatch = 2;
-    if (!fp)
+    if (!fp) {
+        printf("%s\n", status_file);
         perror("open status failed");
+    }
     while(getline(&line, &size, fp) != -1)
     {
         if (strstr(line, "Uid:") != NULL) {
@@ -60,13 +62,11 @@ bool root_own(int pid)
                 int len = pmatch[1].rm_eo - pmatch[1].rm_so;
                 memcpy(match, line + pmatch[1].rm_so, len);
                 match[len] = 0;
-                printf("match find %s\n", match);
                 uid = atoi(match);
             }
             regfree(&reg);
         }
     }
-    printf("uid=%d\n", uid);
     if (uid == 0)
         return true;
     return false;
@@ -79,37 +79,40 @@ bool is_file(Argument* arg, char* cwd)
         return true;
     }
     char path[50];
-    sprintf(path, "%s/%s", cwd, arg->origin);
     if (!access(path, 0)) {
         strcpy(arg->real, path);
         return true;
     }
-    strcpy(arg->real, path);
+    strcpy(arg->real, arg->origin);
     return false;
 }
 
 bool can_fuzz_file(Process* pro)
 {
     Argument *argp;
-    bool ret = false;
+    bool find = false;
     bool first = true;
-    QLIST_FOREACH(argp, &pro->arglist, node)
+    QSIMPLEQ_FOREACH(argp, &pro->arglist, node)
     {
-        if(first && is_file(argp, pro->cwd))
-        {
-            ret = true;
-            strcat(pro->fuzz_cmd, "@@ ");
-            pro->fuzz_arg = argp;
-        } else {
-            strcat(pro->fuzz_cmd, argp->real);
-            strcat(pro->fuzz_cmd, " ");
+        if(is_file(argp, pro->cwd)) {
+            if (!find) {
+                find = true;
+                strcat(pro->fuzz_cmd, " @@");
+                pro->fuzz_arg = argp;
+            } else {
+                strcat(pro->fuzz_cmd, " ");
+                strcat(pro->fuzz_cmd, argp->real);
+            }
         }
     }
-    return true;
+    return find;
 }
 
-bool can_fuzz_protocol(Process* pro)
+bool can_fuzz_protocol(Process* proc)
 {
+    if (can_fuzz_file(proc)) {
+        printf("fuzz_cmd is %s\n", proc->fuzz_cmd);
+    }
     return true;
 }
 
@@ -118,7 +121,7 @@ int can_fuzz(Process* pro)
 {
     if (in_white(pro->elf_name))
         return 0;
-    if (!is_elf(pro->real_name))
+    if (!is_elf(pro->elf_name))
         return 0;
     if (root_own(pro->pid))
         return 0;
@@ -131,19 +134,20 @@ int can_fuzz(Process* pro)
 Process* get_process(int pid)
 {
     Process *proc = malloc(sizeof(Process));
-    QLIST_INIT(&proc->arglist);
+    proc->pid = pid;
+    QSIMPLEQ_INIT(&proc->arglist);
     char file_name[50];
     FILE *fp;
     // analysis /proc/pid/exe
-    sprintf(proc->elf_name, "/proc/%d/exe", pid);
-    if(readlink(proc->elf_name, proc->real_name, 50) < 0)
+    sprintf(file_name, "/proc/%d/exe", pid);
+    if(readlink(file_name, proc->elf_name, 50) < 0)
         perror("readlink exe");
-    proc->abs_name = strrchr(proc->real_name, '/') + 1;
-    printf("%s %s %s\n", proc->elf_name, proc->real_name, proc->abs_name);
+    proc->abs_name = strrchr(proc->elf_name, '/') + 1;
+    printf("%s %s %s\n", proc->elf_name, proc->elf_name, proc->abs_name);
 
     // analysis /proc/pid/cwd
-    sprintf(proc->cwd, "/proc/%d/cwd", pid);
-    if(readlink(proc->cwd, proc->cwd, 50) < 0)
+    sprintf(file_name, "/proc/%d/cwd", pid);
+    if(readlink(file_name, proc->cwd, 50) < 0)
         perror("readlink cwd");
     printf("cwd is %s\n", proc->cwd);
 
@@ -156,24 +160,32 @@ Process* get_process(int pid)
     char *line = NULL;
     int c;
     char arg[20], *p = arg;
+    bool first = true;
     while((c = fgetc(fp)) != EOF)
     {
         *p++ = c;
         if (!c) {
-            Argument *argument = malloc(sizeof(Argument));
-            memcpy(argument->origin, arg, strlen(arg));
-            QLIST_INSERT_HEAD(&proc->arglist, argument, node);
+            if (first) {
+                first = false;
+                memcpy(proc->fuzz_cmd, proc->elf_name, strlen(proc->elf_name));
+            } else {
+                Argument *argument = malloc(sizeof(Argument));
+                memcpy(argument->origin, arg, strlen(arg));
+                QSIMPLEQ_INSERT_TAIL(&proc->arglist, argument, node);
+            }
             memset(arg, 0 , 20);
             p = arg;
         }
     }
     fclose(fp);
-    Argument *argp;
-    QLIST_FOREACH(argp, &proc->arglist, node)
+#if 0
+    Argument *argp;// *second = QSIMPLEQ_NEXT(QSIMPLEQ_HEAD(&proc->arglist));
+    QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
     {
-        printf("arg is %s\n", argp->origin);
+        printf("debug: arg is %s\n", argp->origin);
 
     }
+#endif
     return proc;
 }
 
