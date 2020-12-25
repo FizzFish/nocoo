@@ -7,6 +7,7 @@
 #include<sys/types.h>
 #include<sys/stat.h>
 #include<sys/time.h>
+#include<sys/wait.h>
 #include<fcntl.h>
 #include <signal.h>
 #include <dirent.h>
@@ -52,6 +53,15 @@ typedef struct tcpEntry
 
 typedef QSIMPLEQ_HEAD(TcpList, tcpEntry) TcpList;
 
+typedef struct Fuzz
+{
+    char root[10];
+    char in[10];
+    char out[10];
+    Process * proc;
+
+} Fuzz;
+
 bool in_white(char*);
 bool is_elf(char*);
 bool root_own(int);
@@ -63,15 +73,11 @@ void free_proc(Process*);
 void extract_cmd(Process*);
 bool filter(Process*);
 int can_fuzz(Process*, TcpList*);
+void fuzz(Process * proc);
+void prepare_env(Fuzz*);
+void sniffer(int, int);
+void procNet(void);
 
-typedef struct Fuzz
-{
-    char root[10];
-    char in[10];
-    char out[10];
-    Process * proc;
-
-} Fuzz;
 
 
 

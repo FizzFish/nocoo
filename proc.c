@@ -140,7 +140,7 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
             if (tcp->inode == socknum) {
                 proc->port = tcp->rport;
                 proc->fuzz_kind = 2;
-                fprintf(logfp, "Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
+                //fprintf(logfp, "Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
                 printf("Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
                 return true;
             }

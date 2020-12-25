@@ -4,7 +4,7 @@
 #include<sys/socket.h>
 #include<arpa/inet.h>
 
-extern FILE* logfp;
+//extern FILE* logfp;
 int copyFile(const char* src, const char* des)
 {
     int nRet = 0;
@@ -61,7 +61,6 @@ void sniffer(int port, int infd)
     struct sockaddr_in source,dest;
 	sock_raw = socket(AF_INET , SOCK_RAW , IPPROTO_TCP);
 	unsigned char *buffer = (unsigned char *)malloc(65536); //Its Big!
-    logfp = stdout;
 
 	if(sock_raw < 0)
 	{
