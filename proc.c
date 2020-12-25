@@ -11,7 +11,7 @@ bool in_white(char *abs_name)
     while(getline(&line, &size, fp) != -1)
     {
         if (strncmp(abs_name, line, strlen(abs_name)) == 0) {
-            //printf("in white list\n");
+            printf("in white list, %s %s\n", abs_name, line);
             fclose(fp);
             return true;
         }
@@ -76,19 +76,23 @@ bool root_own(int pid)
 
 bool is_file(Argument* arg, char* cwd)
 {
-    //check if arg is config file
-    if (arg->origin[0] == '/') {
+    //check if arg is config file in /etc
+    if (strncmp(arg->origin, "/etc", 4) == 0) {
         strcpy(arg->real, arg->origin);
         return false;
     }
-    if (!access(arg->origin, 0)) {
-        strcpy(arg->real, arg->origin);
-        return true;
+    if (strncmp(arg->origin, cwd, strlen(cwd)) == 0) { //absolute path
+        if (!access(arg->origin, 0)) {
+            strcpy(arg->real, arg->origin);
+            return true;
+        }
+    } else {
+        sprintf(arg->real, "%s/%s", cwd, arg->origin);
+        if (!access(arg->real, 0)) {
+            return true;
+        }
     }
-    sprintf(arg->real, "%s/%s", cwd, arg->origin);
-    if (!access(arg->real, 0)) {
-        return true;
-    }
+    // arg is not a file arg
     strcpy(arg->real, arg->origin);
     return false;
 }
