@@ -10,9 +10,9 @@ void fuzz(Process * proc)
     fuzz.proc = proc;
     
     prepare_env(&fuzz);
-    printf("%d: %s %s\n", proc->pid, fuzz.root, fuzz.in);
     printf("...............................\n");
-    printf("cmd %s\n", proc->fuzz_cmd);
+    printf("fuzz %d cmd ", proc->pid);
+    show_fuzz_cmd(proc);
     printf("...............................\n");
 
     int pid, status;
@@ -42,7 +42,7 @@ void fuzz(Process * proc)
         int i = 0;
         if (proc->fuzz_kind == 1) {
             //bin/afl-fuzz -i in -o out -Q -m none
-            char *ffuzz_arg[] = {"bin/afl-fuzz", "-i", fuzz.in, "-o", fuzz.out,
+            char *ffuzz_arg[] = {"./afl-fuzz", "-i", fuzz.in, "-o", fuzz.out,
                 "-Q", "-m", "none"};
             argnum += 9;
             i = 8;
@@ -55,15 +55,20 @@ void fuzz(Process * proc)
         i++;
         QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
         {
-            argv[i] = malloc(sizeof(argp->real)+1);
-            strcpy(argv[i], argp->real);
+            if (!argp->kind) {
+                argv[i] = malloc(sizeof(argp->name)+1);
+                strcpy(argv[i], argp->name);
+            } else {
+                argv[i] = "@@";
+            }
             i++;
         }
         argv[i] = NULL;
         for(i=0;i<argnum;i++)
-            puts(argv[i]);
-
-        execv(proc->elf_name, argv);
+            if(argv[i])
+                printf("%s ", argv[i]);
+        printf("\n");
+        //execv(proc->elf_name, argv);
     }
 #endif
     waitpid(pid, &status, 0);

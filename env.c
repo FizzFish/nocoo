@@ -11,7 +11,7 @@ int copyFile(const char* src, const char* des)
     FILE* pSrc = NULL, *pDes = NULL;
     pSrc = fopen(src, "r");
     pDes = fopen(des, "w+");
-
+    printf("copyFile: %s => %s\n", src, des);
     if (pSrc && pDes)
     {
         int nLen = 0;
@@ -46,9 +46,16 @@ void prepare_env(Fuzz* fuzz)
     }
 
     char dst[100];
-    sprintf(dst, "%s/%s", fuzz->root, fuzz->proc->abs_name);
-    copyFile(fuzz->proc->elf_name, dst);
+    Process *proc = fuzz->proc;
+    sprintf(dst, "%s/%s", fuzz->root, get_abs_name(proc));
+    copyFile(proc->elf_name, dst);
     chmod(dst, 0777);
+
+    if (proc->fuzz_arg) {
+        char *abs = strrchr(proc->fuzz_arg->name, '/') + 1;
+        sprintf(dst, "%s/%s", fuzz->in, abs);
+        copyFile(proc->fuzz_arg->name, dst);
+    }
 
 }
 

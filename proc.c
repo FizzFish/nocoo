@@ -2,12 +2,19 @@
 #include "queue.h"
 
 extern FILE* logfp;
-bool in_white(char *abs_name)
+
+inline char* get_abs_name(Process* proc)
+{
+    return strrchr(proc->elf_name, '/') + 1;
+}
+
+static bool in_white(Process* proc)
 {
     char white_file[20] = "white";
     FILE *fp = fopen(white_file, "r");
     size_t size = 0;
     char *line = NULL;
+    char *abs_name = get_abs_name(proc);
     while(getline(&line, &size, fp) != -1)
     {
         if (strncmp(abs_name, line, strlen(abs_name)) == 0) {
@@ -74,26 +81,41 @@ bool root_own(int pid)
     return false;
 }
 
+void show_fuzz_cmd(Process* proc)
+{
+    Argument *argp;
+    printf("%s ", proc->elf_name);
+    QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
+    {
+        if (argp->kind == 1)
+            printf(" @@");
+        else
+            printf(" %s", argp->name);
+    }
+    printf("\n");
+}
+
 bool is_file(Argument* arg, char* cwd)
 {
     //check if arg is config file in /etc
-    if (strncmp(arg->origin, "/etc", 4) == 0) {
-        strcpy(arg->real, arg->origin);
+    if (strncmp(arg->name, "/etc", 4) == 0) {
         return false;
     }
-    if (strncmp(arg->origin, cwd, strlen(cwd)) == 0) { //absolute path
-        if (!access(arg->origin, 0)) {
-            strcpy(arg->real, arg->origin);
+    if (strncmp(arg->name, cwd, strlen(cwd)) == 0) { //absolute path
+        if (!access(arg->name, 0)) {
             return true;
         }
     } else {
-        sprintf(arg->real, "%s/%s", cwd, arg->origin);
-        if (!access(arg->real, 0)) {
+        char *real = malloc(strlen(arg->name) + strlen(cwd)+2);
+        sprintf(real, "%s/%s", cwd, arg->name);
+        if (!access(real, 0)) {
+            free(arg->name);
+            arg->name = real;
             return true;
-        }
+        } else
+            free(real);
     }
     // arg is not a file arg
-    strcpy(arg->real, arg->origin);
     return false;
 }
 
@@ -104,19 +126,16 @@ bool can_fuzz_file(Process* proc)
     bool first = true;
     QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
     {
-        if(!find && is_file(argp, proc->cwd)) {
+        if(is_file(argp, proc->cwd)) {
             find = true;
-            strcat(proc->fuzz_cmd, " @@");
             proc->fuzz_arg = argp;
-        } else {
-            strcat(proc->fuzz_cmd, " ");
-            strcat(proc->fuzz_cmd, argp->real);
+            argp->kind = 1;
+            break;
         }
     }
     if (find) {
         proc->fuzz_kind = 1;
-        //fprintf(logfp, "File fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
-        printf("File fuzz %d, cmd is %s, fuzz arg is %s\n", proc->pid, proc->fuzz_cmd, proc->fuzz_arg->origin);
+        printf("File fuzz %d, fuzz arg is %s\n", proc->pid, proc->fuzz_arg->name);
     }
     return find;
 }
@@ -145,7 +164,7 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
                 proc->port = tcp->rport;
                 proc->fuzz_kind = 2;
                 //fprintf(logfp, "Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
-                printf("Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
+                printf("Protocol fuzz %d\n", proc->pid);
                 return true;
             }
     }
@@ -153,21 +172,21 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
 }
 
 // 0: CANNOT; 1: FILE; 2: PROTOCOL
-int can_fuzz(Process* pro, TcpList* tcplist)
+int can_fuzz(Process* proc, TcpList* tcplist)
 {
-    if (in_white(pro->abs_name)) {
+    if (in_white(proc)) {
         return 0;
     }
-    if (!is_elf(pro->elf_name))
+    if (!is_elf(proc->elf_name))
         return 0;
 #if 0
-    if (root_own(pro->pid))
+    if (root_own(proc->pid))
         return 0;
 #endif
-    extract_cmd(pro);
-    if (can_fuzz_file(pro))
+    extract_cmd(proc);
+    if (can_fuzz_file(proc))
         return 1;
-    else if (can_fuzz_protocol(pro, tcplist))
+    else if (can_fuzz_protocol(proc, tcplist))
         return 2;
 }
 
@@ -196,7 +215,6 @@ Process* get_process(int pid)
         free(proc);
         return NULL;
     }
-    proc->abs_name = strrchr(proc->elf_name, '/') + 1;
     //printf("%s %s %s\n", proc->elf_name, proc->elf_name, proc->abs_name);
 
     // analysis /proc/pid/cwd
@@ -222,7 +240,6 @@ void extract_cmd(Process *proc)
     int c;
     char arg[10240], *p = arg;
     bool first = true;
-    int cmd_size = strlen(proc->elf_name);
     while((c = fgetc(fp)) != EOF)
     {
         *p++ = c;
@@ -233,19 +250,15 @@ void extract_cmd(Process *proc)
             } else {
                 Argument *argument = malloc(sizeof(Argument));
                 memset(argument, 0, sizeof(Argument));
-                argument->origin = malloc(strlen(arg)+1);
-                argument->real = malloc(strlen(proc->cwd) + strlen(arg)+2);
-                strcpy(argument->origin, arg);
+                argument->name = malloc(strlen(arg)+1);
+                strcpy(argument->name, arg);
                 QSIMPLEQ_INSERT_TAIL(&proc->arglist, argument, node);
-                cmd_size += (strlen(proc->cwd) + strlen(arg)+2);
                 proc->argnum++;
             }
             memset(arg, 0 , 1024);
             p = arg;
         }
     }
-    proc->fuzz_cmd = malloc(cmd_size+10);
-    strcpy(proc->fuzz_cmd, proc->elf_name);
     fclose(fp);
 }
 
@@ -259,13 +272,11 @@ void free_proc(Process * proc)
     Argument* argp;
     QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
     {
-        safe_free(argp->origin);
-        safe_free(argp->real);
+        safe_free(argp->name);
         safe_free(argp);
     }
     safe_free(proc->elf_name);
     safe_free(proc->cwd);
-    safe_free(proc->fuzz_cmd);
     safe_free(proc);
 }
 

@@ -23,8 +23,8 @@ typedef struct Argument Argument;
 
 struct Argument
 {
-    char *origin;
-    char *real;
+    char *name;
+    int kind;//0=>name; 1=>@@
     QSIMPLEQ_ENTRY(Argument) node;
 };
 
@@ -33,13 +33,11 @@ typedef struct Process
 {
     int pid;
     char *elf_name;
-    char *abs_name;
     char *cwd;
     int fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
     int argnum;
     int port;
-    char *fuzz_cmd;
     QSIMPLEQ_HEAD(, Argument) arglist;
 } Process;
 
@@ -62,17 +60,19 @@ typedef struct Fuzz
 
 } Fuzz;
 
-bool in_white(char*);
 bool is_elf(char*);
 bool root_own(int);
 bool has_file_in_arg(int);
 bool is_listen(int);
+char* get_abs_name(Process*);
 
 Process* get_process(int);
 void free_proc(Process*);
 void extract_cmd(Process*);
 bool filter(Process*);
 int can_fuzz(Process*, TcpList*);
+void show_fuzz_cmd(Process*);
+
 void fuzz(Process * proc);
 void prepare_env(Fuzz*);
 void sniffer(int, int);
