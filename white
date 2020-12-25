@@ -76,7 +76,6 @@ pulseaudio
 soffice.bin
 sogou-qimpanel
 sogou-qimpanel-watchdog
-ssh
 systemd
 Typora
 update-notifier
@@ -92,3 +91,5 @@ ssh-agent
 vim.basic
 mongod
 uml_switch
+python3.6
+sudo

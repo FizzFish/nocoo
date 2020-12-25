@@ -40,7 +40,7 @@ void prepare_env(Fuzz* fuzz)
         perror("mkdir1");
     }
 
-    if (access(fuzz->root, 0)) {
+    if (access(fuzz->in, 0)) {
         mkdir(fuzz->in, 0755);
         perror("mkdir2");
     }
@@ -79,7 +79,6 @@ void sniffer(int port, int infd)
 		data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
 		if(data_size <0 )
 		{
-			printf("Recvfrom error , failed to get packets\n");
             close(infd);
             close(sock_raw);
 			return;

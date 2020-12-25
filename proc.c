@@ -76,6 +76,11 @@ bool root_own(int pid)
 
 bool is_file(Argument* arg, char* cwd)
 {
+    //check if arg is config file
+    if (arg->origin[0] == '/') {
+        strcpy(arg->real, arg->origin);
+        return false;
+    }
     if (!access(arg->origin, 0)) {
         strcpy(arg->real, arg->origin);
         return true;
@@ -151,8 +156,10 @@ int can_fuzz(Process* pro, TcpList* tcplist)
     }
     if (!is_elf(pro->elf_name))
         return 0;
+#if 0
     if (root_own(pro->pid))
         return 0;
+#endif
     extract_cmd(pro);
     if (can_fuzz_file(pro))
         return 1;
@@ -218,6 +225,7 @@ void extract_cmd(Process *proc)
         if (!c) {
             if (first) {
                 first = false;
+                proc->argnum = 1;
             } else {
                 Argument *argument = malloc(sizeof(Argument));
                 memset(argument, 0, sizeof(Argument));
@@ -226,6 +234,7 @@ void extract_cmd(Process *proc)
                 strcpy(argument->origin, arg);
                 QSIMPLEQ_INSERT_TAIL(&proc->arglist, argument, node);
                 cmd_size += (strlen(proc->cwd) + strlen(arg)+2);
+                proc->argnum++;
             }
             memset(arg, 0 , 1024);
             p = arg;

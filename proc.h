@@ -36,6 +36,7 @@ typedef struct Process
     char *cwd;
     int fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
+    int argnum;
     int port;
     char *fuzz_cmd;
     QSIMPLEQ_HEAD(, Argument) arglist;
@@ -65,8 +66,9 @@ int can_fuzz(Process*, TcpList*);
 
 typedef struct Fuzz
 {
-    char *root;
-    char *in;
+    char root[10];
+    char in[10];
+    char out[10];
     Process * proc;
 
 } Fuzz;

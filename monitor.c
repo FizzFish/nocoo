@@ -16,10 +16,9 @@ static void handle_timeout(int sig) {
 void fuzz(Process * proc)
 {
     Fuzz fuzz;
-    fuzz.root = malloc(6);
-    fuzz.in = malloc(strlen(proc->abs_name)+10);
     sprintf(fuzz.root, "d%d", proc->pid);
     sprintf(fuzz.in, "%s/in", fuzz.root);
+    sprintf(fuzz.out, "%s/out", fuzz.root);
     fuzz.proc = proc;
     
     prepare_env(&fuzz);
@@ -28,15 +27,14 @@ void fuzz(Process * proc)
     printf("cmd %s\n", proc->fuzz_cmd);
     printf("...............................\n");
 
+    int pid, status;
     if (proc->fuzz_kind == 2) {
         char pcap[250];
         sprintf(pcap, "%s/pcap", fuzz.in);
-        printf("pcap is %s\n", pcap);
         int infd = open(pcap, O_WRONLY | O_CREAT, S_IRWXU | S_IROTH);
-        perror("open");
-        printf("fd of %s is %d\n", pcap, infd);
-        int pid = fork();
-        int status;
+        if (infd < 0)
+            perror("open");
+        pid = fork();
         if (pid < 0)
             perror("fork");
         if (!pid) {
@@ -45,10 +43,44 @@ void fuzz(Process * proc)
         waitpid(pid, &status, 0);
         printf("status is %d\n", status);
     }
+#if 1
+    pid = fork();
+    if (pid < 0)
+        perror("fork");
+    if (!pid) {
+        Argument* argp;
+        int argnum = proc->argnum;
+        char ** argv;
+        int i = 0;
+        if (proc->fuzz_kind == 1) {
+            //bin/afl-fuzz -i in -o out -Q -m none
+            char **ffuzz_arg = {"bin/afl-fuzz", "-i", fuzz.in, "-o", fuzz.out,
+                "-Q", "-m", "none"};
+            argnum += 9;
+            i = 8;
+            argv = malloc(argnum * sizeof(char*));
+            memcpy(argv, ffuzz_arg, 8 * sizeof(char*));
+        } else {
+        }
+        argv[i] = malloc(sizeof(proc->elf_name)+1);
+        strcpy(argv[i], proc->elf_name);
+        i++;
+        QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
+        {
+            argv[i] = malloc(sizeof(argp->real)+1);
+            strcpy(argv[i], argp->real);
+            i++;
+        }
+        argv[i] = NULL;
+        for(i=0;i<argnum;i++)
+            puts(argv[i]);
 
-    free(fuzz.root);
-    free(fuzz.in);
+        execv(proc->elf_name, argv);
+    }
+#endif
+    waitpid(pid, &status, 0);
     printf("fuzz end\n");
+
 }
 int getval(char* line, regmatch_t *pmatch, int index, int base)
 {
@@ -104,6 +136,7 @@ void search_process() {
     int pid;
     char path[100];
     Process *proc = NULL; 
+    bool find = false;
     while((pdir = readdir(proc_dir)) != 0) {
         //if inode == 0, continue
         if (pdir->d_ino == 0)
@@ -115,13 +148,19 @@ void search_process() {
         if (!proc) {
             continue;
         }
-        if (can_fuzz(proc, &tcplist))
+        if (can_fuzz(proc, &tcplist)) {
+            find = true;
             break;
+        }
         free_proc(proc);
     }
-    if (proc)
+
+    if (find) {
+        printf("find proc %d\n", proc->pid);
         fuzz(proc);
-    free(proc);
+        free(proc);
+    }
+    printf("Not find Process\n");
 }
 
 int main() {
@@ -134,7 +173,7 @@ int main() {
     */
     logfp = fopen("log", "w");
     procNet();
-#if 1
+#if 0
     signal(SIGALRM, handle_timeout);
     struct itimerval it;
     it.it_value.tv_sec = 1;
@@ -142,8 +181,12 @@ int main() {
     it.it_interval.tv_sec = 10;
     it.it_interval.tv_usec = 0;
     setitimer(ITIMER_REAL, &it, NULL);
-    while(1);
 #endif
+    while(1) {
+        search_process();
+        printf("sleeping.....\n");
+        sleep(30);
+    }
     fclose(logfp);
     return 0;
 }
