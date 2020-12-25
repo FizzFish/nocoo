@@ -90,3 +90,5 @@ update-manager
 python3
 ssh-agent
 vim.basic
+mongod
+uml_switch

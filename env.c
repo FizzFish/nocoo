@@ -12,7 +12,6 @@ int copyFile(const char* src, const char* des)
     pSrc = fopen(src, "r");
     pDes = fopen(des, "w+");
 
-
     if (pSrc && pDes)
     {
         int nLen = 0;
@@ -25,26 +24,29 @@ int copyFile(const char* src, const char* des)
     else
         nRet = -1;
 
-
     if (pSrc)
         fclose(pSrc), pSrc = NULL;
 
-
     if (pDes)
         fclose(pDes), pDes = NULL;
-
 
     return nRet;
 }
 
 void prepare_env(Fuzz* fuzz)
 {
-    mkdir(fuzz->root, 0777);
+    if (access(fuzz->root, 0)) {
+        mkdir(fuzz->root, 0755);
+        perror("mkdir1");
+    }
 
-    mkdir(fuzz->in, 0777);
+    if (access(fuzz->root, 0)) {
+        mkdir(fuzz->in, 0755);
+        perror("mkdir2");
+    }
 
     char dst[100];
-    sprintf(dst, "%s/%s", fuzz->in, fuzz->proc->abs_name);
+    sprintf(dst, "%s/%s", fuzz->root, fuzz->proc->abs_name);
     copyFile(fuzz->proc->elf_name, dst);
     chmod(dst, 0777);
 
@@ -66,16 +68,20 @@ void sniffer(int port, int infd)
 		printf("Socket Error\n");
 		return;
 	}
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 100000;
     printf("%s %d\n", __func__, port);
 	while(1)
 	{
 		saddr_size = sizeof saddr;
 		//Receive a packet
 		data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
-        printf("..");
 		if(data_size <0 )
 		{
 			printf("Recvfrom error , failed to get packets\n");
+            close(infd);
+            close(sock_raw);
 			return;
 		}
 		//Now process the packet
@@ -83,14 +89,15 @@ void sniffer(int port, int infd)
         struct tcphdr *tcph=(struct tcphdr*)(buffer + iphdrlen);
         int dport = ntohs(tcph->dest);
         int header_size = iphdrlen + tcph->doff * 4;
-        if (dport == port
-            && data_size > header_size)
-            {
-                write(infd, buffer + header_size, data_size - header_size);
+        if (dport == port && data_size > header_size) {
+            write(infd, buffer + header_size, data_size - header_size);
+#if 1
+            if (setsockopt(sock_raw, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+                perror("SetOpt Error");
             }
+#endif
+        }
 	
 	}
-    close(infd);
-	close(sock_raw);
 }
 

@@ -9,6 +9,7 @@ extern void prepare_env(Fuzz*);
 extern void sniffer(int, int);
 
 static void handle_timeout(int sig) {
+    printf("##################TIME OUT######################\n");
     search_process();
 }
 
@@ -17,19 +18,22 @@ void fuzz(Process * proc)
     Fuzz fuzz;
     fuzz.root = malloc(6);
     fuzz.in = malloc(strlen(proc->abs_name)+10);
-    sprintf(fuzz.root, "%d", proc->pid);
-    sprintf(fuzz.in, "%d/%s", proc->pid, "in");
+    sprintf(fuzz.root, "d%d", proc->pid);
+    sprintf(fuzz.in, "%s/in", fuzz.root);
     fuzz.proc = proc;
     
     prepare_env(&fuzz);
     printf("%d: %s %s\n", proc->pid, fuzz.root, fuzz.in);
-    printf("%s\n", proc->fuzz_cmd);
-    printf("%d\n", proc->fuzz_kind);
+    printf("...............................\n");
+    printf("cmd %s\n", proc->fuzz_cmd);
+    printf("...............................\n");
 
     if (proc->fuzz_kind == 2) {
         char pcap[250];
         sprintf(pcap, "%s/pcap", fuzz.in);
-        int infd = open(pcap, O_RDWR);
+        printf("pcap is %s\n", pcap);
+        int infd = open(pcap, O_WRONLY | O_CREAT, S_IRWXU | S_IROTH);
+        perror("open");
         printf("fd of %s is %d\n", pcap, infd);
         int pid = fork();
         int status;
@@ -39,10 +43,12 @@ void fuzz(Process * proc)
             sniffer(proc->port, infd);
         }
         waitpid(pid, &status, 0);
+        printf("status is %d\n", status);
     }
 
     free(fuzz.root);
     free(fuzz.in);
+    printf("fuzz end\n");
 }
 int getval(char* line, regmatch_t *pmatch, int index, int base)
 {
@@ -96,7 +102,8 @@ void search_process() {
     struct dirent * pdir;
     char status_file[300];//like /proc/100/status
     int pid;
-    char path[100]; Process *proc = NULL; 
+    char path[100];
+    Process *proc = NULL; 
     while((pdir = readdir(proc_dir)) != 0) {
         //if inode == 0, continue
         if (pdir->d_ino == 0)
@@ -106,11 +113,11 @@ void search_process() {
         pid = atoi(pdir->d_name);
         proc = get_process(pid);
         if (!proc) {
-            free(proc);
             continue;
         }
         if (can_fuzz(proc, &tcplist))
             break;
+        free_proc(proc);
     }
     if (proc)
         fuzz(proc);

@@ -10,6 +10,7 @@
 #include<fcntl.h>
 #include <signal.h>
 #include <dirent.h>
+#include <errno.h>
 #include <unistd.h>
 #include "queue.h"
 
@@ -30,13 +31,13 @@ struct Argument
 typedef struct Process
 {
     int pid;
-    char elf_name[100];
+    char *elf_name;
     char *abs_name;
-    char cwd[200];
+    char *cwd;
     int fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
     int port;
-    char fuzz_cmd[1024];
+    char *fuzz_cmd;
     QSIMPLEQ_HEAD(, Argument) arglist;
 } Process;
 
@@ -57,6 +58,8 @@ bool has_file_in_arg(int);
 bool is_listen(int);
 
 Process* get_process(int);
+void free_proc(Process*);
+void extract_cmd(Process*);
 bool filter(Process*);
 int can_fuzz(Process*, TcpList*);
 

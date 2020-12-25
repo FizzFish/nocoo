@@ -42,11 +42,10 @@ bool root_own(int pid)
     char *line = NULL;
     FILE *fp = fopen(status_file, "r");
     int uid = 0;
-    char match[10];
+    char match[20];
     regmatch_t pmatch[2];
     const size_t nmatch = 2;
     if (!fp) {
-        printf("%s\n", status_file);
         perror("open status failed");
         return true;
     }
@@ -58,7 +57,7 @@ bool root_own(int pid)
             regcomp(&reg, pattern, REG_EXTENDED);
             int status = regexec(&reg, line, nmatch, pmatch, 0);
             if (status == REG_NOMATCH) {
-                printf("line is %s\n", line);
+                regfree(&reg);
                 perror("No match");
                 return true;
             } else {
@@ -122,7 +121,6 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
     DIR * fd_dir = opendir(fd);
     if (fd_dir < 0) {
         perror("opendir");
-        printf("open dir %s error\n", fd);
     }
     while((pdir = readdir(fd_dir)) != 0) {
         sprintf(file, "%s/%s", fd, pdir->d_name);
@@ -155,35 +153,57 @@ int can_fuzz(Process* pro, TcpList* tcplist)
         return 0;
     if (root_own(pro->pid))
         return 0;
+    extract_cmd(pro);
     if (can_fuzz_file(pro))
         return 1;
     else if (can_fuzz_protocol(pro, tcplist))
         return 2;
 }
 
+static bool get_link(char* path, char** real)
+{
+    char link[1024];
+    int len = readlink(path, link, 1024);
+    if (len < 0)
+        return false;
+    link[len] = 0;
+    *real = malloc(len+1);
+    strcpy(*real, link);
+    return true;
+}
+
 Process* get_process(int pid)
 {
     Process *proc = malloc(sizeof(Process));
+    memset(proc, 0, sizeof(Process));
     proc->pid = pid;
     QSIMPLEQ_INIT(&proc->arglist);
-    char file_name[50];
-    FILE *fp;
-    // analysis /proc/pid/exe
+
+    char file_name[100];
     sprintf(file_name, "/proc/%d/exe", pid);
-    if(readlink(file_name, proc->elf_name, 50) < 0)
+    if (!get_link(file_name, &proc->elf_name)) {
+        free(proc);
         return NULL;
+    }
     proc->abs_name = strrchr(proc->elf_name, '/') + 1;
     //printf("%s %s %s\n", proc->elf_name, proc->elf_name, proc->abs_name);
 
     // analysis /proc/pid/cwd
     sprintf(file_name, "/proc/%d/cwd", pid);
-    if(readlink(file_name, proc->cwd, 50) < 0)
+    if (!get_link(file_name, &proc->cwd)) {
+        free(proc->elf_name);
+        free(proc);
         return NULL;
-    //printf("cwd is %s\n", proc->cwd);
+    }
+    return proc;
+}
 
+void extract_cmd(Process *proc)
+{
     // analysis /proc/pid/cmdline
-    sprintf(file_name, "/proc/%d/cmdline", pid);
-    fp = fopen(file_name, "r");
+    char file_name[100];
+    sprintf(file_name, "/proc/%d/cmdline", proc->pid);
+    FILE* fp = fopen(file_name, "r");
     if (!fp)
         perror("fread");
     size_t size = 0;
@@ -191,26 +211,48 @@ Process* get_process(int pid)
     int c;
     char arg[10240], *p = arg;
     bool first = true;
+    int cmd_size = strlen(proc->elf_name);
     while((c = fgetc(fp)) != EOF)
     {
         *p++ = c;
         if (!c) {
             if (first) {
                 first = false;
-                memcpy(proc->fuzz_cmd, proc->elf_name, strlen(proc->elf_name));
             } else {
                 Argument *argument = malloc(sizeof(Argument));
+                memset(argument, 0, sizeof(Argument));
                 argument->origin = malloc(strlen(arg)+1);
                 argument->real = malloc(strlen(proc->cwd) + strlen(arg)+2);
                 strcpy(argument->origin, arg);
                 QSIMPLEQ_INSERT_TAIL(&proc->arglist, argument, node);
+                cmd_size += (strlen(proc->cwd) + strlen(arg)+2);
             }
             memset(arg, 0 , 1024);
             p = arg;
         }
     }
+    proc->fuzz_cmd = malloc(cmd_size+10);
+    strcpy(proc->fuzz_cmd, proc->elf_name);
     fclose(fp);
-    return proc;
 }
 
+static void safe_free(void *p)
+{
+    if (p)
+        free(p);
+}
+void free_proc(Process * proc)
+{
+    Argument* argp;
+    QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
+    {
+        safe_free(argp->origin);
+        safe_free(argp->real);
+        safe_free(argp);
+    }
+    safe_free(proc->elf_name);
+    safe_free(proc->cwd);
+    safe_free(proc->fuzz_cmd);
+    safe_free(proc);
+}
 
