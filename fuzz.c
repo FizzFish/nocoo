@@ -1,6 +1,7 @@
 #include "proc.h"
 
 TcpList tcplist;
+
 static void prepare_fuzz(Fuzz *fuzz, Process * proc)
 {
     sprintf(fuzz->root, "env/%d", proc->pid);

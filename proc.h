@@ -78,6 +78,9 @@ void prepare_env(Fuzz*);
 void sniffer(int, int);
 void procNet(void);
 
+void core_pattern(void);
+void cpu_performance(void);
+
 extern FILE* logfp;
 
 

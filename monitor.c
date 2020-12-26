@@ -50,6 +50,8 @@ void search_process() {
 }
 
 int main() {
+    core_pattern();
+    cpu_performance();
     logfp = fopen("log", "w");
     //logfp = stdout;
     procNet();

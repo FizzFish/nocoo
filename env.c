@@ -4,6 +4,29 @@
 #include<sys/socket.h>
 #include<arpa/inet.h>
 
+void core_pattern() {
+    FILE *core = fopen("/proc/sys/kernel/core_pattern", "w");
+    fprintf(core, "core");
+    fclose(core);
+}
+
+void cpu_performance() {
+    char *start = "/sys/devices/system/cpu";
+    DIR * proc_dir = opendir(start);
+    struct dirent * pdir;
+    char path[500];
+    while((pdir = readdir(proc_dir)) != 0) {
+        if(strncmp(pdir->d_name, "cpu", 3) == 0) {
+            sprintf(path, "%s/%s/cpufreq/scaling_governor", start, pdir->d_name);
+            if (!access(path, 0)) {
+                FILE *cpu = fopen(path, "w");
+                fprintf(cpu, "performance");
+                fclose(cpu);
+            }
+        }
+    }
+}
+
 int copyFile(const char* src, const char* des)
 {
     int nRet = 0;
