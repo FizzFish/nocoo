@@ -4,7 +4,7 @@ TcpList tcplist;
 void fuzz(Process * proc)
 {
     Fuzz fuzz;
-    sprintf(fuzz.root, "d%d", proc->pid);
+    sprintf(fuzz.root, "env/%d", proc->pid);
     sprintf(fuzz.in, "%s/in", fuzz.root);
     sprintf(fuzz.out, "%s/out", fuzz.root);
     fuzz.proc = proc;
@@ -68,7 +68,7 @@ void fuzz(Process * proc)
             if(argv[i])
                 printf("%s ", argv[i]);
         printf("\n");
-        //execv(proc->elf_name, argv);
+        execv("afl-fuzz", argv);
     }
 #endif
     waitpid(pid, &status, 0);

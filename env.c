@@ -35,14 +35,16 @@ int copyFile(const char* src, const char* des)
 
 void prepare_env(Fuzz* fuzz)
 {
+    if (access("env", 0)) {
+        mkdir("env", 0755);
+    }
+
     if (access(fuzz->root, 0)) {
         mkdir(fuzz->root, 0755);
-        perror("mkdir1");
     }
 
     if (access(fuzz->in, 0)) {
         mkdir(fuzz->in, 0755);
-        perror("mkdir2");
     }
 
     char dst[100];

@@ -18,7 +18,7 @@ static bool in_white(Process* proc)
     while(getline(&line, &size, fp) != -1)
     {
         if (strncmp(abs_name, line, strlen(abs_name)) == 0) {
-            printf("in white list, %s %s\n", abs_name, line);
+            //printf("in white list, %s %s\n", abs_name, line);
             fclose(fp);
             return true;
         }

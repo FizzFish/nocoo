@@ -42,8 +42,8 @@ void search_process() {
         printf("find proc %d\n", proc->pid);
         fuzz(proc);
         free_proc(proc);
-    }
-    printf("Not find Process\n");
+    } else
+        printf("Not find Process\n");
 }
 
 int main() {

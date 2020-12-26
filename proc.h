@@ -53,9 +53,9 @@ typedef QSIMPLEQ_HEAD(TcpList, tcpEntry) TcpList;
 
 typedef struct Fuzz
 {
-    char root[10];
-    char in[10];
-    char out[10];
+    char root[20];
+    char in[20];
+    char out[20];
     Process * proc;
 
 } Fuzz;
