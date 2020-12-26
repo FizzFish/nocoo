@@ -38,18 +38,32 @@ void fuzz(Process * proc)
     if (!pid) {
         Argument* argp;
         int argnum = proc->argnum;
-        char ** argv;
-        int i = 0;
+        char ** argv, **basearg;
+        int i = 0, basenum = 8;
         if (proc->fuzz_kind == 1) {
             //bin/afl-fuzz -i in -o out -Q -m none
-            char *ffuzz_arg[] = {"./afl-fuzz", "-i", fuzz.in, "-o", fuzz.out,
+            char *fuzz_arg[] = {"./afl-fuzz", "-i", fuzz.in, "-o", fuzz.out,
                 "-Q", "-m", "none"};
-            argnum += 9;
-            i = 8;
-            argv = malloc(argnum * sizeof(char*));
-            memcpy(argv, ffuzz_arg, 8 * sizeof(char*));
+            basearg = fuzz_arg;
         } else {
+        /**
+            ./afl-fuzz -Q -d -i python/in/ -o python/out \
+            -N tcp://127.0.0.1/8001 \
+            -P FTP -D 10000 -q 3 -s 3 -E -K -R \
+            python3 -m http.server 8001
+        */
+            char *proto = "FTP";// need to configure
+            char *fuzz_arg[] = {"./afl-fuzz", "-i", fuzz.in, "-o", fuzz.out,
+                "-Q", "-m", "none",
+                "-N", "tcp://127.0.0.1/8001", 
+                "-P",  proto, "-D", "10000", "-q", "3", "-s", "3", "-E", "-K", "-R"};
+            basearg = fuzz_arg;
         }
+        argnum += basenum+1;
+        i = basenum;
+        argv = malloc(argnum * sizeof(char*));
+        memcpy(argv, basearg, basenum * sizeof(char*));
+
         argv[i] = malloc(sizeof(proc->elf_name)+1);
         strcpy(argv[i], proc->elf_name);
         i++;
