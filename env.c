@@ -4,14 +4,13 @@
 #include<sys/socket.h>
 #include<arpa/inet.h>
 
-//extern FILE* logfp;
 int copyFile(const char* src, const char* des)
 {
     int nRet = 0;
     FILE* pSrc = NULL, *pDes = NULL;
     pSrc = fopen(src, "r");
     pDes = fopen(des, "w+");
-    printf("copyFile: %s => %s\n", src, des);
+    fprintf(logfp, "copyFile: %s => %s\n", src, des);
     if (pSrc && pDes)
     {
         int nLen = 0;
@@ -73,13 +72,14 @@ void sniffer(int port, int infd)
 
 	if(sock_raw < 0)
 	{
-		printf("Socket Error\n");
+		fprintf(logfp, "Cannot create RawSocket\n");
 		return;
 	}
     struct timeval tv;
-    tv.tv_sec = 1;
+    tv.tv_sec = 30;
     tv.tv_usec = 100000;
-    printf("%s %d\n", __func__, port);
+    fprintf(logfp, "Sniffer port %d\n", port);
+    int state = 0;
 	while(1)
 	{
 		saddr_size = sizeof saddr;
@@ -87,6 +87,8 @@ void sniffer(int port, int infd)
 		data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
 		if(data_size <0 )
 		{
+            if (state == 0)
+                fprintf(logfp, "Cannot recv any packets in 30s\n");
             close(infd);
             close(sock_raw);
 			return;
@@ -98,11 +100,15 @@ void sniffer(int port, int infd)
         int header_size = iphdrlen + tcph->doff * 4;
         if (dport == port && data_size > header_size) {
             write(infd, buffer + header_size, data_size - header_size);
-#if 1
-            if (setsockopt(sock_raw, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-                perror("SetOpt Error");
+
+            if (state == 0) {
+                state = 1;
+                tv.tv_sec = 1;
+                tv.tv_usec = 100000;
+                if (setsockopt(sock_raw, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+                    fprintf(logfp, "Cannot create RawSocket\n");
+                }
             }
-#endif
         }
 	
 	}

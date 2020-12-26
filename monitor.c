@@ -39,7 +39,6 @@ void search_process() {
     }
 
     if (find) {
-        printf("find proc %d\n", proc->pid);
         fuzz(proc);
         free_proc(proc);
     } else
@@ -55,6 +54,7 @@ int main() {
         search_process();
     */
     logfp = fopen("log", "w");
+    logfp = stdout;
     procNet();
 #if 0
     signal(SIGALRM, handle_timeout);

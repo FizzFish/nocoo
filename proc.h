@@ -78,6 +78,8 @@ void prepare_env(Fuzz*);
 void sniffer(int, int);
 void procNet(void);
 
+extern FILE* logfp;
+
 
 
 

@@ -10,10 +10,7 @@ void fuzz(Process * proc)
     fuzz.proc = proc;
     
     prepare_env(&fuzz);
-    printf("...............................\n");
-    printf("fuzz %d cmd ", proc->pid);
     show_fuzz_cmd(proc);
-    printf("...............................\n");
 
     int pid, status;
     if (proc->fuzz_kind == 2) {

@@ -84,15 +84,15 @@ bool root_own(int pid)
 void show_fuzz_cmd(Process* proc)
 {
     Argument *argp;
-    printf("%s ", proc->elf_name);
+    fprintf(logfp, "fuzz cmd: %s ", proc->elf_name);
     QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
     {
         if (argp->kind == 1)
-            printf(" @@");
+            fprintf(logfp, " @@");
         else
-            printf(" %s", argp->name);
+            fprintf(logfp, " %s", argp->name);
     }
-    printf("\n");
+    fprintf(logfp, "\n");
 }
 
 bool is_file(Argument* arg, char* cwd)
@@ -135,7 +135,7 @@ bool can_fuzz_file(Process* proc)
     }
     if (find) {
         proc->fuzz_kind = 1;
-        printf("File fuzz %d, fuzz arg is %s\n", proc->pid, proc->fuzz_arg->name);
+        fprintf(logfp, "File fuzz %d, fuzz arg is %s\n", proc->pid, proc->fuzz_arg->name);
     }
     return find;
 }
@@ -163,8 +163,7 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
             if (tcp->inode == socknum) {
                 proc->port = tcp->rport;
                 proc->fuzz_kind = 2;
-                //fprintf(logfp, "Protocol fuzz %d, cmd is %s\n", proc->pid, proc->fuzz_cmd);
-                printf("Protocol fuzz %d\n", proc->pid);
+                fprintf(logfp, "Protocol fuzz %d\n", proc->pid);
                 return true;
             }
     }
