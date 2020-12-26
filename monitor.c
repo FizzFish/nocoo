@@ -50,14 +50,14 @@ void search_process() {
 }
 
 int main() {
-    //logfp = fopen("log", "w");
-    logfp = stdout;
+    logfp = fopen("log", "w");
+    //logfp = stdout;
     procNet();
     signal(SIGINT,handle_cancle);
     while(1) {
         search_process();
-        printf("sleeping.....\n");
-//        sleep(30);
+        fprintf(logfp, "sleeping 30 seconds.....\n");
+        sleep(30);
     }
     fclose(logfp);
     return 0;

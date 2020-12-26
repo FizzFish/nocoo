@@ -31,8 +31,8 @@ static void prepare_fuzz(Fuzz *fuzz, Process * proc)
 
 static int fuzz_pid;
 static void handle_timeout(int sig) {
-    printf("timeout kill %d\n", fuzz_pid);
-    kill(fuzz_pid, SIGKILL);
+    fprintf(logfp, "timeout kill %d\n", fuzz_pid);
+    kill(fuzz_pid, SIGINT);
 }
 
 void fuzz(Process * proc)
@@ -95,21 +95,20 @@ void fuzz(Process * proc)
 #endif
         close(1);
         execv("afl-fuzz", argv);
-        //while(1);
     }
 
     fuzz_pid = pid;
     int status;
+    signal(SIGALRM, handle_timeout);
+#if 0
     struct itimerval it;
     it.it_value.tv_sec = 5;
     it.it_value.tv_usec = 0;
-#if 0
     it.it_interval.tv_sec = 1;
     it.it_interval.tv_usec = 0;
-#endif
-    signal(SIGALRM, handle_timeout);
     setitimer(ITIMER_REAL, &it, NULL);
-
+#endif
+    alarm(15);
     waitpid(fuzz_pid, &status, 0);
     fprintf(logfp, "fuzz end, status=%d\n", status);
 

@@ -93,6 +93,7 @@ void show_fuzz_cmd(Process* proc)
             fprintf(logfp, " %s", argp->name);
     }
     fprintf(logfp, "\n");
+    fflush(logfp);
 }
 
 bool is_file(Argument* arg, char* cwd)
