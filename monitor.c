@@ -11,6 +11,10 @@ static void handle_timeout(int sig) {
 }
 #endif
 
+static void handle_cancle(int sig) {
+    fclose(logfp);
+    exit(0);
+}
 
 void search_process() {
     DIR * proc_dir = opendir("/proc");
@@ -46,29 +50,14 @@ void search_process() {
 }
 
 int main() {
-    /**
-    int pid = fork();
-    if (pid < 0)
-        perror("fork");
-    if (!pid)
-        search_process();
-    */
-    logfp = fopen("log", "w");
+    //logfp = fopen("log", "w");
     logfp = stdout;
     procNet();
-#if 0
-    signal(SIGALRM, handle_timeout);
-    struct itimerval it;
-    it.it_value.tv_sec = 1;
-    it.it_value.tv_usec = 0;
-    it.it_interval.tv_sec = 10;
-    it.it_interval.tv_usec = 0;
-    setitimer(ITIMER_REAL, &it, NULL);
-#endif
+    signal(SIGINT,handle_cancle);
     while(1) {
         search_process();
         printf("sleeping.....\n");
-        sleep(30);
+//        sleep(30);
     }
     fclose(logfp);
     return 0;

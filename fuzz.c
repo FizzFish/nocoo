@@ -1,21 +1,20 @@
 #include "proc.h"
 
 TcpList tcplist;
-void fuzz(Process * proc)
+static void prepare_fuzz(Fuzz *fuzz, Process * proc)
 {
-    Fuzz fuzz;
-    sprintf(fuzz.root, "env/%d", proc->pid);
-    sprintf(fuzz.in, "%s/in", fuzz.root);
-    sprintf(fuzz.out, "%s/out", fuzz.root);
-    fuzz.proc = proc;
+    sprintf(fuzz->root, "env/%d", proc->pid);
+    sprintf(fuzz->in, "%s/in", fuzz->root);
+    sprintf(fuzz->out, "%s/out", fuzz->root);
+    fuzz->proc = proc;
     
-    prepare_env(&fuzz);
+    prepare_env(fuzz);
     show_fuzz_cmd(proc);
 
     int pid, status;
     if (proc->fuzz_kind == 2) {
         char pcap[250];
-        sprintf(pcap, "%s/pcap", fuzz.in);
+        sprintf(pcap, "%s/pcap", fuzz->in);
         int infd = open(pcap, O_WRONLY | O_CREAT, S_IRWXU | S_IROTH);
         if (infd < 0)
             perror("open");
@@ -26,13 +25,25 @@ void fuzz(Process * proc)
             sniffer(proc->port, infd);
         }
         waitpid(pid, &status, 0);
-        printf("status is %d\n", status);
+        //printf("status is %d\n", status);
     }
-#if 1
-    pid = fork();
+}
+
+static int fuzz_pid;
+static void handle_timeout(int sig) {
+    printf("timeout kill %d\n", fuzz_pid);
+    kill(fuzz_pid, SIGKILL);
+}
+
+void fuzz(Process * proc)
+{
+    Fuzz fuzz;
+    prepare_fuzz(&fuzz, proc);
+    int pid = fork();
     if (pid < 0)
         perror("fork");
     if (!pid) {
+        //while(1);
         Argument* argp;
         int argnum = proc->argnum;
         char ** argv, **basearg;
@@ -75,15 +86,32 @@ void fuzz(Process * proc)
             i++;
         }
         argv[i] = NULL;
+#if 0
         for(i=0;i<argnum;i++)
-            if(argv[i])
-                printf("%s ", argv[i]);
-        printf("\n");
-        execv("afl-fuzz", argv);
-    }
+            if(argv[i]) {
+                fprintf(logfp, "%s ", argv[i]);
+            }
+        fprintf(logfp, "\n");
 #endif
-    waitpid(pid, &status, 0);
-    printf("fuzz end\n");
+        close(1);
+        execv("afl-fuzz", argv);
+        //while(1);
+    }
+
+    fuzz_pid = pid;
+    int status;
+    struct itimerval it;
+    it.it_value.tv_sec = 5;
+    it.it_value.tv_usec = 0;
+#if 0
+    it.it_interval.tv_sec = 1;
+    it.it_interval.tv_usec = 0;
+#endif
+    signal(SIGALRM, handle_timeout);
+    setitimer(ITIMER_REAL, &it, NULL);
+
+    waitpid(fuzz_pid, &status, 0);
+    fprintf(logfp, "fuzz end, status=%d\n", status);
 
 }
 
