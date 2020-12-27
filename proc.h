@@ -39,7 +39,16 @@ typedef struct Process
     int argnum;
     int port;
     QSIMPLEQ_HEAD(, Argument) arglist;
+    QSIMPLEQ_ENTRY(Process) next;
 } Process;
+
+typedef struct ProcList
+{
+    pthread_mutex_t mutex;// = PTHREAD_MUTEX_INITIALIZER;  
+    pthread_cond_t  cond;//  = PTHREAD_COND_INITIALIZER;  
+    int count;
+    QSIMPLEQ_HEAD(, Process) list;
+} ProcList;
 
 typedef struct tcpEntry
 {
