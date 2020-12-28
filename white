@@ -92,3 +92,6 @@ mongod
 uml_switch
 python3.6
 sudo
+vmware-vmx
+vmnet-natd
+vmware-authdlauncher

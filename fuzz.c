@@ -4,10 +4,15 @@ TcpList tcplist;
 
 static void prepare_fuzz(Fuzz *fuzz, Process * proc)
 {
+    char cmd[100];
     sprintf(fuzz->root, "env/%d", proc->pid);
     sprintf(fuzz->in, "%s/in", fuzz->root);
     sprintf(fuzz->out, "%s/out", fuzz->root);
     fuzz->proc = proc;
+
+    sprintf(cmd, "./cobot.sh %s > /dev/null 2>&1\n", fuzz->root);
+    printf("debug: %s\n", cmd);
+    system(cmd);
     
     prepare_env(fuzz);
     show_fuzz_cmd(proc);

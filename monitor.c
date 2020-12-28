@@ -63,6 +63,7 @@ void search_process() {
 
 void fuzz_wait(void *arg)
 {
+    Process* proc;
     while(true) {
         printf("enter fuzz_wait\n");
         pthread_mutex_lock(&proclist.mutex);  
@@ -70,7 +71,8 @@ void fuzz_wait(void *arg)
             pthread_cond_wait(&proclist.cond, &proclist.mutex);  
         proclist.count--;  
         printf("----decrement:%d.\n", proclist.count);  
-        fuzz(pop_proc());
+        proc = pop_proc();
+        fuzz(proc);
         pthread_mutex_unlock(&proclist.mutex);  
         printf("out fuzz_wait\n");
     }

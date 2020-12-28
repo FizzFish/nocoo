@@ -102,6 +102,21 @@ bool is_file(Argument* arg, char* cwd)
     if (strncmp(arg->name, "/etc", 4) == 0) {
         return false;
     }
+    if (strncmp(arg->name, "/proc", 5) == 0) {
+        return false;
+    }
+    if (strncmp(arg->name, "/var", 4) == 0) {
+        return false;
+    }
+    if (strncmp(arg->name, "/run", 4) == 0) {
+        return false;
+    }
+    if (strncmp(arg->name, "/dev", 4) == 0) {
+        return false;
+    }
+    if (strncmp(arg->name, "/sys", 4) == 0) {
+        return false;
+    }
     if (strncmp(arg->name, cwd, strlen(cwd)) == 0) { //absolute path
         if (!access(arg->name, 0)) {
             return true;
@@ -162,9 +177,11 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
         tcpEntry *tcp;
         QSIMPLEQ_FOREACH(tcp, tcplist, next)
             if (tcp->inode == socknum) {
+                if(tcp->rport == 27017) // it's mongod, pass
+                    return false;
                 proc->port = tcp->rport;
                 proc->fuzz_kind = 2;
-                fprintf(logfp, "Protocol fuzz %d\n", proc->pid);
+                fprintf(logfp, "Protocol fuzz %d, port=%d\n", proc->pid, proc->port);
                 return true;
             }
     }
