@@ -37,7 +37,9 @@ typedef struct Process
     int fuzz_kind; //0: CANNOT; 1: FILEFUZZ; 2: PROFUZZ
     Argument* fuzz_arg;
     int argnum;
-    int port;
+    int port[5];
+    int portn;
+    int listen_port;
     QSIMPLEQ_HEAD(, Argument) arglist;
     QSIMPLEQ_ENTRY(Process) next;
 } Process;
@@ -84,7 +86,7 @@ void show_fuzz_cmd(Process*);
 
 void fuzz(Process * proc);
 void prepare_env(Fuzz*);
-void sniffer(int, int);
+void sniffer(Process*, int);
 void procNet(void);
 
 void core_pattern(void);

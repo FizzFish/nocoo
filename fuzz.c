@@ -10,9 +10,11 @@ static void prepare_fuzz(Fuzz *fuzz, Process * proc)
     sprintf(fuzz->out, "%s/out", fuzz->root);
     fuzz->proc = proc;
 
+#if 0
     sprintf(cmd, "./cobot.sh %s > /dev/null 2>&1\n", fuzz->root);
     printf("debug: %s\n", cmd);
     system(cmd);
+#endif
     
     prepare_env(fuzz);
     show_fuzz_cmd(proc);
@@ -24,14 +26,17 @@ static void prepare_fuzz(Fuzz *fuzz, Process * proc)
         int infd = open(pcap, O_WRONLY | O_CREAT, S_IRWXU | S_IROTH);
         if (infd < 0)
             perror("open");
+        /**
         pid = fork();
         if (pid < 0)
             perror("fork");
         if (!pid) {
-            sniffer(proc->port, infd);
+            sniffer(proc, infd);
         }
         waitpid(pid, &status, 0);
         //printf("status is %d\n", status);
+        */
+        sniffer(proc, infd);
     }
 }
 
@@ -45,6 +50,7 @@ void fuzz(Process * proc)
 {
     Fuzz fuzz;
     prepare_fuzz(&fuzz, proc);
+
     int pid = fork();
     if (pid < 0)
         perror("fork");
@@ -61,28 +67,34 @@ void fuzz(Process * proc)
             basearg = fuzz_arg;
         } else {
         /**
-            ./afl-fuzz -Q -d -i python/in/ -o python/out \
-            -N tcp://127.0.0.1/8001 \
-            -P FTP -D 10000 -q 3 -s 3 -E -K -R \
-            python3 -m http.server 8001
+            ./afl-fuzz -Q -d -i in -o out \
+            -N tcp://127.0.0.1/8554 \
+            -x rtsp.dict \
+            -P RTSP -D 10000 -q 3 -s 3 -E -K -R \
+            ./testOnDemandRTSPServer 8554
         */
-            char *proto = "FTP";// need to configure
+            char *proto = "RTSP";// need to configure
+            char server[100] = {0};
+            sprintf(server, "tcp://127.0.0.1/%d", proc->listen_port);
             char *fuzz_arg[] = {"./afl-fuzz", "-i", fuzz.in, "-o", fuzz.out,
-                "-Q", "-m", "none",
-                "-N", "tcp://127.0.0.1/8001", 
+                "-Q", "-m", "none", "-d",
+                "-N", server,
                 "-P",  proto, "-D", "10000", "-q", "3", "-s", "3", "-E", "-K", "-R"};
             basearg = fuzz_arg;
+            basenum = 22;
         }
+
         argnum += basenum+1;
         i = basenum;
         argv = malloc(argnum * sizeof(char*));
         memcpy(argv, basearg, basenum * sizeof(char*));
 
-        argv[i] = malloc(sizeof(proc->elf_name)+1);
+        argv[i] = malloc(strlen(proc->elf_name)+1);
         strcpy(argv[i], proc->elf_name);
         i++;
         QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
         {
+            printf("%d %s\n", __LINE__, argp->name);
             if (!argp->kind) {
                 argv[i] = malloc(sizeof(argp->name)+1);
                 strcpy(argv[i], argp->name);
@@ -92,14 +104,14 @@ void fuzz(Process * proc)
             i++;
         }
         argv[i] = NULL;
-#if 0
+#if 1
         for(i=0;i<argnum;i++)
             if(argv[i]) {
                 fprintf(logfp, "%s ", argv[i]);
             }
         fprintf(logfp, "\n");
 #endif
-        close(1);
+    //    close(1);
         execv("afl-fuzz", argv);
     }
 

@@ -161,6 +161,7 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
     char fd[50], file[300], real[50];
     struct dirent * pdir;
     int socknum = 0;
+    tcpEntry *tcp;
     sprintf(fd, "/proc/%d/fd", proc->pid);
     DIR * fd_dir = opendir(fd);
     if (fd_dir < 0) {
@@ -170,21 +171,22 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
         sprintf(file, "%s/%s", fd, pdir->d_name);
         if (readlink(file, real, 50) < 0)
             continue;
-        if (strstr(real, "socket"))
+        if (strstr(real, "socket")) {
             socknum = atoi(real+8);
+            QSIMPLEQ_FOREACH(tcp, tcplist, next)
+                if (tcp->inode == socknum) {
+                    if(tcp->rport == 27017) // it's mongod, pass
+                        return false;
+                    printf("%x:%x = %x:%x %d\n", tcp->raddr, tcp->rport, tcp->laddr, tcp->lport, tcp->inode);
+                    proc->port[proc->portn++] = tcp->rport;
+                    proc->fuzz_kind = 2;
+                    fprintf(logfp, "Protocol fuzz %d, port=%d:%d\n", proc->pid, proc->port[0], proc->port[1]);
+                }
+        }
     }
-    if (socknum) {
-        tcpEntry *tcp;
-        QSIMPLEQ_FOREACH(tcp, tcplist, next)
-            if (tcp->inode == socknum) {
-                if(tcp->rport == 27017) // it's mongod, pass
-                    return false;
-                proc->port = tcp->rport;
-                proc->fuzz_kind = 2;
-                fprintf(logfp, "Protocol fuzz %d, port=%d\n", proc->pid, proc->port);
-                return true;
-            }
-    }
+
+    if (proc->portn)
+        return true;
     return false;
 }
 

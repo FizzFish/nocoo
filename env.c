@@ -83,9 +83,21 @@ void prepare_env(Fuzz* fuzz)
 
 }
 
-void sniffer(int port, int infd)
+static inline bool inport(Process* proc, int port)
+{
+    int i = 0;
+    for(i=0;i<proc->portn;i++)
+        if(proc->port[i] == port) {
+            proc->listen_port = proc->port[i];
+            return true;
+        }
+    return false;
+}
+
+void sniffer(Process* proc, int infd)
 {
     int sock_raw;
+    int i;
 	int saddr_size , data_size;
 	struct sockaddr saddr;
 	struct in_addr in;
@@ -101,7 +113,12 @@ void sniffer(int port, int infd)
     struct timeval tv;
     tv.tv_sec = 30;
     tv.tv_usec = 100000;
-    fprintf(logfp, "Sniffer port %d\n", port);
+    fprintf(logfp, "wait 30 seconds, sniffer port [\n");
+
+    for(i=0;i<proc->portn;i++)
+        fprintf(logfp, "%d, \n", proc->port[i]);
+    fprintf(logfp, "]\n");
+
     int state = 0;
 	while(1)
 	{
@@ -121,7 +138,7 @@ void sniffer(int port, int infd)
         struct tcphdr *tcph=(struct tcphdr*)(buffer + iphdrlen);
         int dport = ntohs(tcph->dest);
         int header_size = iphdrlen + tcph->doff * 4;
-        if (dport == port && data_size > header_size) {
+        if (inport(proc, dport) && data_size > header_size) {
             write(infd, buffer + header_size, data_size - header_size);
 
             if (state == 0) {
