@@ -113,10 +113,10 @@ void sniffer(Process* proc, int infd)
     struct timeval tv;
     tv.tv_sec = 30;
     tv.tv_usec = 100000;
-    fprintf(logfp, "wait 30 seconds, sniffer port [\n");
+    fprintf(logfp, "wait 30 seconds, sniffer port [");
 
     for(i=0;i<proc->portn;i++)
-        fprintf(logfp, "%d, \n", proc->port[i]);
+        fprintf(logfp, "%d, ", proc->port[i]);
     fprintf(logfp, "]\n");
 
     int state = 0;
@@ -125,7 +125,7 @@ void sniffer(Process* proc, int infd)
 		saddr_size = sizeof saddr;
 		//Receive a packet
 		data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
-		if(data_size <0 )
+		if(data_size < 0 )
 		{
             if (state == 0)
                 fprintf(logfp, "Cannot recv any packets in 30s\n");
@@ -140,10 +140,11 @@ void sniffer(Process* proc, int infd)
         int header_size = iphdrlen + tcph->doff * 4;
         if (inport(proc, dport) && data_size > header_size) {
             write(infd, buffer + header_size, data_size - header_size);
+            write(1, buffer + header_size, data_size - header_size);
 
             if (state == 0) {
                 state = 1;
-                tv.tv_sec = 1;
+                tv.tv_sec = 5;
                 tv.tv_usec = 100000;
                 if (setsockopt(sock_raw, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
                     fprintf(logfp, "Cannot create RawSocket\n");

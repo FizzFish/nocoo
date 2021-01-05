@@ -17,7 +17,7 @@ static bool in_white(Process* proc)
     char *abs_name = get_abs_name(proc);
     while(getline(&line, &size, fp) != -1)
     {
-        if (strncmp(abs_name, line, strlen(abs_name)) == 0) {
+        if (strncmp(abs_name, line, strlen(line)-1) == 0) {
             //printf("in white list, %s %s\n", abs_name, line);
             fclose(fp);
             return true;
@@ -177,10 +177,8 @@ bool can_fuzz_protocol(Process* proc, TcpList* tcplist)
                 if (tcp->inode == socknum) {
                     if(tcp->rport == 27017) // it's mongod, pass
                         return false;
-                    printf("%x:%x = %x:%x %d\n", tcp->raddr, tcp->rport, tcp->laddr, tcp->lport, tcp->inode);
                     proc->port[proc->portn++] = tcp->rport;
                     proc->fuzz_kind = 2;
-                    fprintf(logfp, "Protocol fuzz %d, port=%d:%d\n", proc->pid, proc->port[0], proc->port[1]);
                 }
         }
     }

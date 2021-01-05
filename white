@@ -1,6 +1,7 @@
 appLoader
 at-spi2-registryd
 at-spi-bus-launcher
+ssh
 bash
 cat
 chrome
@@ -95,3 +96,4 @@ sudo
 vmware-vmx
 vmnet-natd
 vmware-authdlauncher
+named

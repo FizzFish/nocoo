@@ -10,14 +10,14 @@ static void prepare_fuzz(Fuzz *fuzz, Process * proc)
     sprintf(fuzz->out, "%s/out", fuzz->root);
     fuzz->proc = proc;
 
-#if 0
+#if 1
     sprintf(cmd, "./cobot.sh %s > /dev/null 2>&1\n", fuzz->root);
     printf("debug: %s\n", cmd);
     system(cmd);
 #endif
     
     prepare_env(fuzz);
-    show_fuzz_cmd(proc);
+    //show_fuzz_cmd(proc);
 
     int pid, status;
     if (proc->fuzz_kind == 2) {
@@ -94,7 +94,6 @@ void fuzz(Process * proc)
         i++;
         QSIMPLEQ_FOREACH(argp, &proc->arglist, node)
         {
-            printf("%d %s\n", __LINE__, argp->name);
             if (!argp->kind) {
                 argv[i] = malloc(sizeof(argp->name)+1);
                 strcpy(argv[i], argp->name);
@@ -112,6 +111,11 @@ void fuzz(Process * proc)
         fprintf(logfp, "\n");
 #endif
     //    close(1);
+        int fd = open("/var/run/netns/net1", O_RDONLY);
+        setns(fd, CLONE_NEWNET);
+        close(fd);
+        fprintf(logfp, "Now fuzz process in new net namespace\n");
+        system("ip addr");
         execv("afl-fuzz", argv);
     }
 
@@ -126,7 +130,7 @@ void fuzz(Process * proc)
     it.it_interval.tv_usec = 0;
     setitimer(ITIMER_REAL, &it, NULL);
 #endif
-    alarm(15);
+    alarm(150);
     waitpid(fuzz_pid, &status, 0);
     fprintf(logfp, "fuzz end, status=%d\n", status);
 

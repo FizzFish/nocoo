@@ -95,8 +95,11 @@ int main() {
     signal(SIGINT,handle_cancle);
     core_pattern();
     cpu_performance();
-    //logfp = fopen("log", "w");
+#if 0
+    logfp = fopen("log", "w");
+#else
     logfp = stdout;
+#endif
     procNet();
     signal(SIGINT,handle_cancle);
 
