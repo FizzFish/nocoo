@@ -1,0 +1,4 @@
+./afl-fuzz -i env/20887/in -o env/20887/out -Q -m none -d \
+    -N tcp://127.0.0.1/8554 \
+    -P RTSP -D 10000 -q 3 -s 3 -E -K -R \
+    /home/lius/old/nocoo1/nettest/test/testOnDemandRTSPServer 8554 

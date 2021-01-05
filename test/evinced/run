@@ -1,0 +1,1 @@
+../../afl-fuzz -i in -o out -m none -Q -- ./evince @@

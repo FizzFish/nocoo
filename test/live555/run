@@ -1,0 +1,6 @@
+#!/bin/bash
+./afl-fuzz -Q -d -i in -o out \
+    -N tcp://127.0.0.1/8554 \
+    -x rtsp.dict \
+    -P RTSP -D 10000 -q 3 -s 3 -E -K -R \
+    ./testOnDemandRTSPServer 8554

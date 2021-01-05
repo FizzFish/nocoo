@@ -1,0 +1,1 @@
+../../afl-fuzz -Q -m none -i in -o out -- ./ffmpeg -i @@

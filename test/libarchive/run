@@ -1,0 +1,1 @@
+../../afl-fuzz -Q -i in -o out -- ./bsdtar -xf @@
